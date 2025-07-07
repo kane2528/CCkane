@@ -857,6 +857,11 @@ Let's build something amazing together! 🚀`,
   // Enhanced Community Card Component
   const CommunityCard = ({ community }) => {
     // const Icon = community.icon;
+    // Fix members display: show count if array, else fallback to string
+    const membersDisplay =
+      Array.isArray(community.members)
+        ? `${community.members.length} Members`
+        : community.members || "0 Members";
     return (
       <div
         className={`group relative backdrop-blur-xl rounded-3xl p-8 border transition-all duration-500 hover:scale-105 hover:shadow-2xl cursor-pointer overflow-hidden ${
@@ -897,7 +902,7 @@ Let's build something amazing together! 🚀`,
                   theme === "dark" ? "text-gray-400" : "text-indigo-600"
                 }`}
               >
-                {community.members}
+                {membersDisplay}
               </p>
             </div>
           </div>
@@ -2849,7 +2854,7 @@ Let's build something amazing together! 🚀`,
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
                   {communities.map((community) => (
-                    <CommunityCard key={community.id} community={community} />
+                    <CommunityCard key={community._id || community.id} community={community} />
                   ))}
                 </div>
               </div>
