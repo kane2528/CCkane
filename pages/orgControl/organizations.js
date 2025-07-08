@@ -1,12 +1,9 @@
 "use client";
-
 import { useState, useEffect } from "react";
-import Navbar from "../components/navbar"
+import Navbar from "../components/navbar";
 import {
   Search,
-  Plus,
   Edit,
-  Trash2,
   Users,
   Calendar,
   MapPin,
@@ -17,6 +14,7 @@ import {
   Loader2,
   X,
   Save,
+  CalendarPlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
@@ -31,6 +29,7 @@ export default function OrganizationsPage() {
   const [error, setError] = useState(null);
   const [showOrgModal, setShowOrgModal] = useState(false);
   const [showOrgDetails, setShowOrgDetails] = useState(false);
+  const [showEventModal, setShowEventModal] = useState(false);
   const [selectedOrg, setSelectedOrg] = useState(null);
   const [editingOrg, setEditingOrg] = useState(null);
 
@@ -67,14 +66,49 @@ export default function OrganizationsPage() {
     return config;
   });
 
+  // New Event State
+  const [newEvent, setNewEvent] = useState({
+    title: "",
+    description: "",
+    category: "Technology",
+    eventDate: "",
+    eventStart: "",
+    eventEnd: "",
+    eventType: {
+      type: "Offline",
+      locationDetails: "",
+    },
+    registrationDeadline: "",
+    maxParticipants: "",
+    tags: "",
+    bannerImage: "",
+  });
+
+  // Event Categories
+  const eventCategories = [
+    "Technology",
+    "Business",
+    "Cultural",
+    "Sports",
+    "Academic",
+    "Social",
+    "Environmental",
+    "Workshop",
+    "Seminar",
+    "Conference",
+    "Competition",
+    "Other",
+  ];
+
+  // Event Types
+  const eventTypes = ["Offline", "Online"];
+
   // Fetch organizations from API
   const fetchOrganizations = async () => {
     try {
       setLoading(true);
       setError(null);
-
       const response = await apiClient.get("/get-organisations-for-admin");
-
       if (response.data && response.data.organisations) {
         const firstOrgId = response.data.organisations[0]?._id;
         if (firstOrgId) {
@@ -105,13 +139,11 @@ export default function OrganizationsPage() {
           createdAt: org.createdAt,
           updatedAt: org.updatedAt,
         }));
-
         setOrganizations(transformedOrgs);
       }
     } catch (err) {
       console.error("Error fetching organizations:", err);
       setError(err.response?.data?.message || "Failed to fetch organizations");
-
       // Fallback to sample data for development
       setOrganizations([
         {
@@ -235,11 +267,9 @@ export default function OrganizationsPage() {
 
         // Make API call to create organization
         const response = await apiClient.post("/create-organisation", orgData);
-
         if (response.data) {
           // Refresh organizations list
           await fetchOrganizations();
-
           // Reset form
           setNewOrg({
             name: "",
@@ -314,7 +344,6 @@ export default function OrganizationsPage() {
           `/update-organisation/${editingOrg.id}`,
           orgData
         );
-
         if (response.data) {
           // Refresh organizations list
           await fetchOrganizations();
@@ -338,7 +367,6 @@ export default function OrganizationsPage() {
     ) {
       try {
         await apiClient.delete(`/delete-organisation/${orgId}`);
-
         // Refresh organizations list
         await fetchOrganizations();
       } catch (err) {
@@ -355,6 +383,104 @@ export default function OrganizationsPage() {
     setShowOrgDetails(true);
   };
 
+  // Handle Add Event
+  const handleAddEvent = async () => {
+    if (newEvent.title && newEvent.description && selectedOrg) {
+      try {
+        const startDateTime = new Date(
+          `${newEvent.eventDate}T${newEvent.eventStart}`
+        );
+        const endDateTime = new Date(
+          `${newEvent.eventDate}T${newEvent.eventEnd}`
+        );
+        // Prepare event data for API
+        const eventData = {
+          title: newEvent.title,
+          description: newEvent.description,
+          category: newEvent.category,
+          eventDate: new Date(newEvent.eventDate),
+          eventStart: startDateTime.toISOString(),
+          eventEnd: endDateTime.toISOString(),
+          eventType: {
+            type: newEvent.eventType.type,
+            locationDetails: newEvent.eventType.locationDetails,
+          },
+          registrationDeadline: new Date(
+            newEvent.registrationDeadline
+          ).toISOString(),
+          maxParticipants: newEvent.maxParticipants
+            ? Number.parseInt(newEvent.maxParticipants)
+            : null,
+          tags: newEvent.tags
+            .split(",")
+            .map((tag) => tag.trim())
+            .filter((tag) => tag),
+          bannerImage: newEvent.bannerImage,
+        };
+
+        // const eventData = {
+        //   title: newEvent.title,
+        //   description: newEvent.description,
+        //   category: newEvent.category,
+        //   eventDate: newEvent.eventDate,
+        //   eventStart: newEvent.eventStart,
+        //   eventEnd: newEvent.eventEnd,
+        //   eventType: {
+        //     type: newEvent.eventType.type,
+        //     locationDetails: newEvent.eventType.locationDetails,
+        //   },
+        //   registrationDeadline: newEvent.registrationDeadline,
+        //   maxParticipants: newEvent.maxParticipants
+        //     ? Number.parseInt(newEvent.maxParticipants)
+        //     : null,
+        //   tags: newEvent.tags
+        //     .split(",")
+        //     .map((tag) => tag.trim())
+        //     .filter((tag) => tag),
+        //   bannerImage: newEvent.bannerImage,
+        //   organizationId: selectedOrg.id, // Pass the organization ID
+        // };
+
+        // Make API call to create event
+        const response = await axios.post(
+          `${process.env.NEXT_PUBLIC_SITE_URL}/api/event/add-event/${selectedOrg.id}`,
+          eventData,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${getAuthToken()}`,
+            },
+          }
+        );
+        if (response.data) {
+          // Reset form
+          setNewEvent({
+            title: "",
+            description: "",
+            category: "Technology",
+            eventDate: "",
+            eventStart: "",
+            eventEnd: "",
+            eventType: {
+              type: "Offline",
+              locationDetails: "",
+            },
+            registrationDeadline: "",
+            maxParticipants: "",
+            tags: "",
+            bannerImage: "",
+          });
+          setShowEventModal(false);
+          // Optionally refresh organizations to update event count
+          await fetchOrganizations();
+        }
+      } catch (err) {
+        console.error("Error creating event:", err);
+        setError(err.response?.data?.message || "Failed to create event");
+      }
+    }
+  };
+
   const currentOrg = editingOrg || newOrg;
 
   const orgTypes = [
@@ -367,6 +493,7 @@ export default function OrganizationsPage() {
     "Foundation",
     "Other",
   ];
+
   const orgCategories = [
     "Technology",
     "Business",
@@ -418,7 +545,6 @@ export default function OrganizationsPage() {
       }`}
     >
       <Navbar theme={theme} onThemeToggle={toggleTheme} />
-
       <div className="relative z-10">
         <section className="pt-8 pb-16 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto">
@@ -488,17 +614,6 @@ export default function OrganizationsPage() {
                   }`}
                 />
               </div>
-              {/* <Button
-                onClick={() => setShowOrgModal(true)}
-                className={`px-8 py-4 rounded-2xl font-bold text-lg transform hover:scale-105 ${
-                  theme === "dark"
-                    ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
-                    : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
-                }`}
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                Add Organization
-              </Button> */}
             </div>
 
             {/* Organizations Stats */}
@@ -534,7 +649,6 @@ export default function OrganizationsPage() {
                   </div>
                 </div>
               </div>
-
               <div
                 className={`p-6 rounded-2xl border transition-all duration-300 hover:scale-105 ${
                   theme === "dark"
@@ -569,7 +683,6 @@ export default function OrganizationsPage() {
                   </div>
                 </div>
               </div>
-
               <div
                 className={`p-6 rounded-2xl border transition-all duration-300 hover:scale-105 ${
                   theme === "dark"
@@ -604,7 +717,6 @@ export default function OrganizationsPage() {
                   </div>
                 </div>
               </div>
-
               <div
                 className={`p-6 rounded-2xl border transition-all duration-300 hover:scale-105 ${
                   theme === "dark"
@@ -666,7 +778,7 @@ export default function OrganizationsPage() {
                   </div>
 
                   {/* Status Badge */}
-                  <div className="absolute top-4 right-16 z-10">
+                  <div className="absolute top-4 right-4 z-10">
                     <span
                       className={`px-2 py-1 rounded-full text-xs font-bold ${
                         org.status === "Active"
@@ -682,30 +794,6 @@ export default function OrganizationsPage() {
                     </span>
                   </div>
 
-                  {/* Action Buttons */}
-                  {/* <div className="absolute top-4 right-4 z-10 flex gap-2">
-                    <button
-                      onClick={() => handleEditOrganization(org)}
-                      className={`p-2 rounded-full backdrop-blur-xl transition-all duration-300 hover:scale-110 ${
-                        theme === "dark"
-                          ? "bg-white/10 hover:bg-white/20 text-white"
-                          : "bg-white/80 hover:bg-white text-indigo-600"
-                      }`}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteOrganization(org.id)}
-                      className={`p-2 rounded-full backdrop-blur-xl transition-all duration-300 hover:scale-110 ${
-                        theme === "dark"
-                          ? "bg-red-900/50 hover:bg-red-900/70 text-red-300"
-                          : "bg-red-100 hover:bg-red-200 text-red-600"
-                      }`}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div> */}
-
                   {/* Organization Banner */}
                   <div className="relative h-48 overflow-hidden">
                     <Image
@@ -715,7 +803,6 @@ export default function OrganizationsPage() {
                       className="object-cover group-hover:scale-110 transition-transform duration-500"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-
                     {/* Organization Logo */}
                     <div className="absolute bottom-4 left-4">
                       <div className="w-16 h-16 rounded-full overflow-hidden border-4 border-white/20 backdrop-blur-sm">
@@ -739,7 +826,6 @@ export default function OrganizationsPage() {
                     >
                       {org.name}
                     </h3>
-
                     <p
                       className={`text-sm mb-4 line-clamp-2 ${
                         theme === "dark" ? "text-gray-300" : "text-indigo-700"
@@ -747,7 +833,6 @@ export default function OrganizationsPage() {
                     >
                       {org.description}
                     </p>
-
                     <div className="space-y-2 mb-4">
                       <div className="flex items-center gap-2">
                         <Building
@@ -822,7 +907,6 @@ export default function OrganizationsPage() {
                         </span>
                       </div>
                     </div>
-
                     <button
                       onClick={() => openOrgDetails(org)}
                       className={`w-full py-3 rounded-xl font-bold transform hover:scale-105 transition-all duration-300 ${
@@ -903,7 +987,6 @@ export default function OrganizationsPage() {
                   <X className="w-6 h-6" />
                 </button>
               </div>
-
               <div className="space-y-6">
                 {/* Basic Information */}
                 <div>
@@ -974,7 +1057,6 @@ export default function OrganizationsPage() {
                       </select>
                     </div>
                   </div>
-
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                     <div>
                       <label
@@ -1038,7 +1120,6 @@ export default function OrganizationsPage() {
                       />
                     </div>
                   </div>
-
                   <div className="mt-4">
                     <label
                       className={`block text-sm font-medium mb-2 ${
@@ -1136,7 +1217,6 @@ export default function OrganizationsPage() {
                       />
                     </div>
                   </div>
-
                   <div className="mt-4">
                     <label
                       className={`block text-sm font-medium mb-2 ${
@@ -1455,7 +1535,6 @@ export default function OrganizationsPage() {
                   </div>
                 </div>
               </div>
-
               <div className="flex gap-4 mt-8">
                 <Button
                   onClick={
@@ -1541,7 +1620,6 @@ export default function OrganizationsPage() {
                   </div>
                 </div>
               </div>
-
               <div className="p-8">
                 <div className="flex items-start justify-between mb-6">
                   <div>
@@ -1575,7 +1653,6 @@ export default function OrganizationsPage() {
                     {selectedOrg.status}
                   </span>
                 </div>
-
                 <p
                   className={`text-lg mb-8 ${
                     theme === "dark" ? "text-gray-300" : "text-indigo-700"
@@ -1583,7 +1660,6 @@ export default function OrganizationsPage() {
                 >
                   {selectedOrg.description}
                 </p>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                   <div className="space-y-6">
                     <div>
@@ -1689,7 +1765,6 @@ export default function OrganizationsPage() {
                       </div>
                     </div>
                   </div>
-
                   <div className="space-y-6">
                     <div>
                       <h3
@@ -1754,7 +1829,6 @@ export default function OrganizationsPage() {
                         </div>
                       </div>
                     </div>
-
                     {selectedOrg.socialLinks &&
                       Object.values(selectedOrg.socialLinks).some(
                         (link) => link
@@ -1831,8 +1905,18 @@ export default function OrganizationsPage() {
                       )}
                   </div>
                 </div>
-
                 <div className="flex gap-4">
+                  <Button
+                    onClick={() => setShowEventModal(true)}
+                    className={`flex-1 py-3 rounded-xl font-bold ${
+                      theme === "dark"
+                        ? "bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
+                        : "bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
+                    }`}
+                  >
+                    <CalendarPlus className="w-4 h-4 mr-2" />
+                    Add Event
+                  </Button>
                   <Button
                     onClick={() => {
                       setShowOrgDetails(false);
@@ -1859,6 +1943,438 @@ export default function OrganizationsPage() {
                     Close
                   </Button>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Event Modal */}
+      {showEventModal && selectedOrg && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div
+            className={`max-w-4xl w-full max-h-[90vh] overflow-y-auto rounded-3xl border ${
+              theme === "dark"
+                ? "bg-slate-900/95 border-white/20"
+                : "bg-white/95 border-indigo-200"
+            }`}
+          >
+            <div className="p-8">
+              <div className="flex items-center justify-between mb-6">
+                <h2
+                  className={`text-2xl font-bold ${
+                    theme === "dark" ? "text-white" : "text-indigo-900"
+                  }`}
+                >
+                  Add New Event for {selectedOrg.name}
+                </h2>
+                <button
+                  onClick={() => setShowEventModal(false)}
+                  className={`p-2 rounded-full hover:scale-110 transition-transform ${
+                    theme === "dark"
+                      ? "text-gray-400 hover:text-white"
+                      : "text-gray-600 hover:text-indigo-900"
+                  }`}
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Basic Event Information */}
+                <div>
+                  <h3
+                    className={`text-lg font-bold mb-4 ${
+                      theme === "dark" ? "text-white" : "text-indigo-900"
+                    }`}
+                  >
+                    Basic Information
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${
+                          theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                        }`}
+                      >
+                        Event Title *
+                      </label>
+                      <input
+                        type="text"
+                        value={newEvent.title}
+                        onChange={(e) =>
+                          setNewEvent({ ...newEvent, title: e.target.value })
+                        }
+                        className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                        }`}
+                        placeholder="Enter event title"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${
+                          theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                        }`}
+                      >
+                        Category
+                      </label>
+                      <select
+                        value={newEvent.category}
+                        onChange={(e) =>
+                          setNewEvent({ ...newEvent, category: e.target.value })
+                        }
+                        className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                        }`}
+                      >
+                        {eventCategories.map((category) => (
+                          <option key={category} value={category}>
+                            {category}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <label
+                      className={`block text-sm font-medium mb-2 ${
+                        theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                      }`}
+                    >
+                      Description *
+                    </label>
+                    <textarea
+                      value={newEvent.description}
+                      onChange={(e) =>
+                        setNewEvent({
+                          ...newEvent,
+                          description: e.target.value,
+                        })
+                      }
+                      rows={3}
+                      className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                        theme === "dark"
+                          ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                          : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                      }`}
+                      placeholder="Enter event description"
+                    />
+                  </div>
+                </div>
+
+                {/* Date and Time Information */}
+                <div>
+                  <h3
+                    className={`text-lg font-bold mb-4 ${
+                      theme === "dark" ? "text-white" : "text-indigo-900"
+                    }`}
+                  >
+                    Date & Time
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${
+                          theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                        }`}
+                      >
+                        Event Date *
+                      </label>
+                      <input
+                        type="date"
+                        value={newEvent.eventDate}
+                        onChange={(e) =>
+                          setNewEvent({
+                            ...newEvent,
+                            eventDate: e.target.value,
+                          })
+                        }
+                        className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                        }`}
+                      />
+                    </div>
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${
+                          theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                        }`}
+                      >
+                        Start Time *
+                      </label>
+                      <input
+                        type="time"
+                        value={newEvent.eventStart}
+                        onChange={(e) =>
+                          setNewEvent({
+                            ...newEvent,
+                            eventStart: e.target.value,
+                          })
+                        }
+                        className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                        }`}
+                      />
+                    </div>
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${
+                          theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                        }`}
+                      >
+                        End Time *
+                      </label>
+                      <input
+                        type="time"
+                        value={newEvent.eventEnd}
+                        onChange={(e) =>
+                          setNewEvent({ ...newEvent, eventEnd: e.target.value })
+                        }
+                        className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                        }`}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Event Type and Location */}
+                <div>
+                  <h3
+                    className={`text-lg font-bold mb-4 ${
+                      theme === "dark" ? "text-white" : "text-indigo-900"
+                    }`}
+                  >
+                    Event Type & Location
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${
+                          theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                        }`}
+                      >
+                        Event Type *
+                      </label>
+                      <select
+                        value={newEvent.eventType.type}
+                        onChange={(e) =>
+                          setNewEvent({
+                            ...newEvent,
+                            eventType: {
+                              ...newEvent.eventType,
+                              type: e.target.value,
+                            },
+                          })
+                        }
+                        className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                        }`}
+                      >
+                        {eventTypes.map((type) => (
+                          <option key={type} value={type}>
+                            {type}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${
+                          theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                        }`}
+                      >
+                        Location Details *
+                      </label>
+                      <input
+                        type="text"
+                        value={newEvent.eventType.locationDetails}
+                        onChange={(e) =>
+                          setNewEvent({
+                            ...newEvent,
+                            eventType: {
+                              ...newEvent.eventType,
+                              locationDetails: e.target.value,
+                            },
+                          })
+                        }
+                        className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                        }`}
+                        placeholder={
+                          newEvent.eventType.type === "Virtual"
+                            ? "Meeting link or platform"
+                            : newEvent.eventType.type === "Hybrid"
+                            ? "Physical address + Meeting link"
+                            : "Physical address or venue"
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Registration and Participation */}
+                <div>
+                  <h3
+                    className={`text-lg font-bold mb-4 ${
+                      theme === "dark" ? "text-white" : "text-indigo-900"
+                    }`}
+                  >
+                    Registration & Participation
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${
+                          theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                        }`}
+                      >
+                        Registration Deadline
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={newEvent.registrationDeadline}
+                        onChange={(e) =>
+                          setNewEvent({
+                            ...newEvent,
+                            registrationDeadline: e.target.value,
+                          })
+                        }
+                        className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                        }`}
+                      />
+                    </div>
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${
+                          theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                        }`}
+                      >
+                        Max Participants
+                      </label>
+                      <input
+                        type="number"
+                        value={newEvent.maxParticipants}
+                        onChange={(e) =>
+                          setNewEvent({
+                            ...newEvent,
+                            maxParticipants: e.target.value,
+                          })
+                        }
+                        className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                        }`}
+                        placeholder="Leave empty for unlimited"
+                        min="1"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Additional Information */}
+                <div>
+                  <h3
+                    className={`text-lg font-bold mb-4 ${
+                      theme === "dark" ? "text-white" : "text-indigo-900"
+                    }`}
+                  >
+                    Additional Information
+                  </h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${
+                          theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                        }`}
+                      >
+                        Tags
+                      </label>
+                      <input
+                        type="text"
+                        value={newEvent.tags}
+                        onChange={(e) =>
+                          setNewEvent({ ...newEvent, tags: e.target.value })
+                        }
+                        className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                        }`}
+                        placeholder="Enter tags separated by commas (e.g., workshop, networking, tech)"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${
+                          theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                        }`}
+                      >
+                        Banner Image URL
+                      </label>
+                      <input
+                        type="url"
+                        value={newEvent.bannerImage}
+                        onChange={(e) =>
+                          setNewEvent({
+                            ...newEvent,
+                            bannerImage: e.target.value,
+                          })
+                        }
+                        className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                        }`}
+                        placeholder="https://example.com/banner-image.jpg"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-4 mt-8">
+                <Button
+                  onClick={handleAddEvent}
+                  className={`flex-1 py-3 rounded-xl font-bold ${
+                    theme === "dark"
+                      ? "bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
+                      : "bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
+                  }`}
+                >
+                  <CalendarPlus className="w-5 h-5 mr-2" />
+                  Create Event
+                </Button>
+                <Button
+                  onClick={() => setShowEventModal(false)}
+                  variant="outline"
+                  className={`px-8 py-3 rounded-xl font-bold border-2 ${
+                    theme === "dark"
+                      ? "border-white/20 text-white hover:bg-white/10"
+                      : "border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                  }`}
+                >
+                  Cancel
+                </Button>
               </div>
             </div>
           </div>

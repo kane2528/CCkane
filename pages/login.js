@@ -111,12 +111,11 @@ export default function LoginPage() {
         `${process.env.NEXT_PUBLIC_SITE_URL}/api/auth/login`,
         formData
       );
-      console.log("dta", response.data);
-      console.log("response", response.data.user.id);
+
       toast.success("Login successfull!");
       // On success
       const { token, user } = response.data;
-
+      const role = user.role;
       // Set token in cookies (expires in 7 days)
       Cookies.set("token", token, { expires: 7 });
       Cookies.set("userId", response.data.user.id, { expires: 7 });
