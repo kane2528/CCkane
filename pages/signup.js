@@ -217,7 +217,7 @@ export default function SignupPage() {
     setIsLoading(true);
     try {
       const response = await axios.post(
-        "http://localhost:3005/api/auth/signup",
+        `${process.env.NEXT_PUBLIC_SITE_URL}/api/auth/signup`,
         {
           name: formData.name,
           rollNumber: formData.rollNumber,
@@ -256,7 +256,7 @@ export default function SignupPage() {
     setOtpError(""); // Clear any previous errors
     try {
       const response = await axios.post(
-        "http://localhost:3005/api/auth/send-email-otp",
+        `${process.env.NEXT_PUBLIC_SITE_URL}/api/auth/send-email-otp`,
         {
           email: formData.email,
         }
@@ -285,7 +285,7 @@ export default function SignupPage() {
     setIsVerifying(true);
     try {
       const response = await axios.post(
-        "http://localhost:3005/api/auth/verify-email-otp",
+        `${process.env.NEXT_PUBLIC_SITE_URL}/api/auth/verify-email-otp`,
         {
           email: formData.email,
           otp: otp,

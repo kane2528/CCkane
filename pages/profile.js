@@ -40,7 +40,7 @@ export default function ProfilePage() {
 
   // API Configuration
   const API_BASE_URL =
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:3006/api";
+    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3006/api";
 
   // Get auth token from localStorage or your auth context
   const getAuthToken = () => {
@@ -1313,9 +1313,7 @@ function EditProfileModal({ isOpen, onClose, userProfile, onUpdate, theme }) {
       const token = Cookies.get("token") || null;
 
       const response = await axios.put(
-        `${
-          process.env.NEXT_PUBLIC_API_URL || "http://localhost:3006/api"
-        }/auth/edit-profile`,
+        `${process.env.NEXT_PUBLIC_SITE_URL}/api/auth/edit-profile`,
         {
           name: formData.name,
           mobile: formData.mobile,

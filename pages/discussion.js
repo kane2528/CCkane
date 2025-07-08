@@ -39,6 +39,7 @@ import {
 import toast from "react-hot-toast";
 import Cookies from "js-cookie";
 import axios from "axios";
+import CreatePostModal from "./components/createmodal";
 
 const Discussions = () => {
   const [theme, setTheme] = useState("dark");
@@ -62,6 +63,7 @@ const Discussions = () => {
   const [newComment, setNewComment] = useState("");
   const [communities, setCommunities] = useState([]);
   const [userCommunities, setUserCommunities] = useState([]);
+  const [userCommunitiesID, setUserCommunitiesID] = useState([]);
   const [discussions, setDiscussions] = useState([]);
   const [savedPosts, setSavedPosts] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -239,6 +241,8 @@ const Discussions = () => {
 
         setCommunities(allRes.data.communities);
         setUserCommunities(userRes.data.communities);
+        setUserCommunitiesID(userRes.data.communities.map((c) => c._id));
+        console.log("User Communities ID:", userCommunitiesID);
         setSavedPosts(savedRes);
 
         // Load initial discussions from first community
@@ -912,8 +916,8 @@ const Discussions = () => {
     return (
       <div
         className={`group relative backdrop-blur-xl rounded-3xl p-8 border transition-all duration-500 hover:scale-105 hover:shadow-2xl cursor-pointer overflow-hidden ${theme === "dark"
-            ? "bg-gradient-to-br from-white/10 to-white/5 border-white/20 hover:bg-gradient-to-br hover:from-white/15 hover:to-white/10"
-            : "bg-gradient-to-br from-white to-gray-50 border-indigo-200 hover:bg-gradient-to-br hover:from-indigo-50 hover:to-purple-50"
+          ? "bg-gradient-to-br from-white/10 to-white/5 border-white/20 hover:bg-gradient-to-br hover:from-white/15 hover:to-white/10"
+          : "bg-gradient-to-br from-white to-gray-50 border-indigo-200 hover:bg-gradient-to-br hover:from-indigo-50 hover:to-purple-50"
           }`}
       >
         <div className="flex items-start justify-between mb-6 relative z-10">
@@ -962,8 +966,8 @@ const Discussions = () => {
         {isUserInCommunity ? (
           <button
             className={`w-full py-4 rounded-2xl font-bold transition-all duration-300 hover:scale-105 transform hover:shadow-xl ${theme === "dark"
-                ? "bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white"
-                : "bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white"
+              ? "bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white"
+              : "bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white"
               }`}
             onClick={async () => {
               setViewedCommunity(community);
@@ -978,8 +982,8 @@ const Discussions = () => {
         ) : (
           <button
             className={`w-full py-4 rounded-2xl font-bold transition-all duration-300 hover:scale-105 transform hover:shadow-xl ${theme === "dark"
-                ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
-                : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+              ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
+              : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
               }`}
             onClick={() => handleJoinCommunity(community._id)}
           >
@@ -1002,8 +1006,8 @@ const Discussions = () => {
     return (
       <div
         className={`group backdrop-blur-xl rounded-3xl p-8 border transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 overflow-hidden relative ${theme === "dark"
-            ? "bg-gradient-to-br from-white/10 to-white/5 border-white/20 hover:bg-gradient-to-br hover:from-white/15 hover:to-white/10"
-            : "bg-gradient-to-br from-white to-gray-50 border-indigo-200 hover:bg-gradient-to-br hover:from-indigo-50 hover:to-purple-50"
+          ? "bg-gradient-to-br from-white/10 to-white/5 border-white/20 hover:bg-gradient-to-br hover:from-white/15 hover:to-white/10"
+          : "bg-gradient-to-br from-white to-gray-50 border-indigo-200 hover:bg-gradient-to-br hover:from-indigo-50 hover:to-purple-50"
           }`}
       >
         <div className="flex items-start justify-between mb-6 relative z-10">
@@ -1011,8 +1015,8 @@ const Discussions = () => {
             <div className="relative">
               <div
                 className={`w-16 h-16 rounded-full flex items-center justify-center font-bold text-white text-lg shadow-lg ${theme === "dark"
-                    ? "bg-gradient-to-r from-purple-500 to-indigo-500"
-                    : "bg-gradient-to-r from-indigo-600 to-purple-600"
+                  ? "bg-gradient-to-r from-purple-500 to-indigo-500"
+                  : "bg-gradient-to-r from-indigo-600 to-purple-600"
                   }`}
               >
                 {discussion.postedBy?.name?.charAt(0) || "U"}
@@ -1039,8 +1043,8 @@ const Discussions = () => {
 
         <h3
           className={`text-2xl font-bold mb-4 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r ${theme === "dark"
-              ? "text-white group-hover:from-purple-400 group-hover:to-yellow-300"
-              : "text-indigo-900 group-hover:from-indigo-600 group-hover:to-purple-600"
+            ? "text-white group-hover:from-purple-400 group-hover:to-yellow-300"
+            : "text-indigo-900 group-hover:from-indigo-600 group-hover:to-purple-600"
             } transition-all duration-300`}
         >
           {discussion.title}
@@ -1059,8 +1063,8 @@ const Discussions = () => {
               <span
                 key={i}
                 className={`text-sm px-3 py-1 rounded-full font-medium transition-all duration-300 cursor-pointer hover:scale-105 ${theme === "dark"
-                    ? "bg-purple-900/50 text-purple-300 hover:bg-purple-800/50 border border-purple-500/30"
-                    : "bg-purple-100 text-purple-700 hover:bg-purple-200 border border-purple-300"
+                  ? "bg-purple-900/50 text-purple-300 hover:bg-purple-800/50 border border-purple-500/30"
+                  : "bg-purple-100 text-purple-700 hover:bg-purple-200 border border-purple-300"
                   }`}
               >
                 #{tag}
@@ -1075,12 +1079,12 @@ const Discussions = () => {
               <button
                 onClick={() => handleVote(discussion._id, "up")}
                 className={`group flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-300 hover:scale-105 ${userVote === "up"
-                    ? theme === "dark"
-                      ? "bg-green-600 text-white shadow-lg"
-                      : "bg-green-500 text-white shadow-lg"
-                    : theme === "dark"
-                      ? "bg-white/10 text-gray-300 hover:bg-green-600/20 hover:text-green-400"
-                      : "bg-indigo-100 text-indigo-700 hover:bg-green-100 hover:text-green-600"
+                  ? theme === "dark"
+                    ? "bg-green-600 text-white shadow-lg"
+                    : "bg-green-500 text-white shadow-lg"
+                  : theme === "dark"
+                    ? "bg-white/10 text-gray-300 hover:bg-green-600/20 hover:text-green-400"
+                    : "bg-indigo-100 text-indigo-700 hover:bg-green-100 hover:text-green-600"
                   }`}
               >
                 <ChevronUp
@@ -1094,12 +1098,12 @@ const Discussions = () => {
 
               <div
                 className={`px-3 py-2 rounded-xl font-bold text-lg ${netVotes > 0
-                    ? "text-green-400"
-                    : netVotes < 0
-                      ? "text-red-400"
-                      : theme === "dark"
-                        ? "text-gray-400"
-                        : "text-gray-600"
+                  ? "text-green-400"
+                  : netVotes < 0
+                    ? "text-red-400"
+                    : theme === "dark"
+                      ? "text-gray-400"
+                      : "text-gray-600"
                   }`}
               >
                 {netVotes > 0 ? `+${netVotes}` : netVotes}
@@ -1108,12 +1112,12 @@ const Discussions = () => {
               <button
                 onClick={() => handleVote(discussion._id, "down")}
                 className={`group flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-300 hover:scale-105 ${userVote === "down"
-                    ? theme === "dark"
-                      ? "bg-red-600 text-white shadow-lg"
-                      : "bg-red-500 text-white shadow-lg"
-                    : theme === "dark"
-                      ? "bg-white/10 text-gray-300 hover:bg-red-600/20 hover:text-red-400"
-                      : "bg-indigo-100 text-indigo-700 hover:bg-red-100 hover:text-red-600"
+                  ? theme === "dark"
+                    ? "bg-red-600 text-white shadow-lg"
+                    : "bg-red-500 text-white shadow-lg"
+                  : theme === "dark"
+                    ? "bg-white/10 text-gray-300 hover:bg-red-600/20 hover:text-red-400"
+                    : "bg-indigo-100 text-indigo-700 hover:bg-red-100 hover:text-red-600"
                   }`}
               >
                 <ChevronDown
@@ -1132,10 +1136,10 @@ const Discussions = () => {
             >
               <Heart
                 className={`w-5 h-5 transition-colors duration-200 ${likedPosts.has(discussion._id)
-                    ? "text-red-500 fill-current"
-                    : theme === "dark"
-                      ? "text-gray-400 group-hover:text-red-400"
-                      : "text-gray-600 group-hover:text-red-500"
+                  ? "text-red-500 fill-current"
+                  : theme === "dark"
+                    ? "text-gray-400 group-hover:text-red-400"
+                    : "text-gray-600 group-hover:text-red-500"
                   }`}
               />
               <span
@@ -1153,8 +1157,8 @@ const Discussions = () => {
             >
               <MessageSquare
                 className={`w-5 h-5 ${theme === "dark"
-                    ? "text-gray-400 group-hover:text-blue-400"
-                    : "text-gray-600 group-hover:text-blue-500"
+                  ? "text-gray-400 group-hover:text-blue-400"
+                  : "text-gray-600 group-hover:text-blue-500"
                   } transition-colors duration-200`}
               />
               <span
@@ -1186,12 +1190,12 @@ const Discussions = () => {
             <button
               onClick={() => toggleBookmark(discussion._id)}
               className={`p-3 rounded-xl transition-all duration-300 hover:scale-105 ${bookmarkedPosts.has(discussion._id)
-                  ? theme === "dark"
-                    ? "bg-yellow-600 text-white shadow-lg"
-                    : "bg-yellow-500 text-white shadow-lg"
-                  : theme === "dark"
-                    ? "hover:bg-white/10 text-gray-400 hover:text-yellow-400"
-                    : "hover:bg-indigo-100 text-indigo-600 hover:text-yellow-600"
+                ? theme === "dark"
+                  ? "bg-yellow-600 text-white shadow-lg"
+                  : "bg-yellow-500 text-white shadow-lg"
+                : theme === "dark"
+                  ? "hover:bg-white/10 text-gray-400 hover:text-yellow-400"
+                  : "hover:bg-indigo-100 text-indigo-600 hover:text-yellow-600"
                 }`}
             >
               <Bookmark className="w-5 h-5" />
@@ -1199,8 +1203,8 @@ const Discussions = () => {
 
             <button
               className={`p-3 rounded-xl transition-all duration-300 hover:scale-105 ${theme === "dark"
-                  ? "hover:bg-white/10 text-gray-400"
-                  : "hover:bg-indigo-100 text-indigo-600"
+                ? "hover:bg-white/10 text-gray-400"
+                : "hover:bg-indigo-100 text-indigo-600"
                 }`}
             >
               <Share2 className="w-5 h-5" />
@@ -1208,8 +1212,8 @@ const Discussions = () => {
 
             <button
               className={`p-3 rounded-xl transition-all duration-300 hover:scale-105 ${theme === "dark"
-                  ? "hover:bg-white/10 text-gray-400"
-                  : "hover:bg-indigo-100 text-indigo-600"
+                ? "hover:bg-white/10 text-gray-400"
+                : "hover:bg-indigo-100 text-indigo-600"
                 }`}
             >
               <Flag className="w-5 h-5" />
@@ -1225,8 +1229,8 @@ const Discussions = () => {
               )
             }
             className={`flex-1 py-4 rounded-2xl font-bold transition-all duration-300 hover:scale-105 transform hover:shadow-xl ${theme === "dark"
-                ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
-                : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+              ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
+              : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
               }`}
           >
             <MessageCircle className="w-4 h-4 mr-2 inline" />
@@ -1236,8 +1240,8 @@ const Discussions = () => {
           <button
             onClick={() => handleViewFullPost(discussion)}
             className={`px-8 py-4 rounded-2xl font-bold border transition-all duration-300 hover:scale-105 transform hover:shadow-xl ${theme === "dark"
-                ? "border-white/20 hover:bg-white/10 text-white"
-                : "border-indigo-200 hover:bg-indigo-50 text-indigo-700"
+              ? "border-white/20 hover:bg-white/10 text-white"
+              : "border-indigo-200 hover:bg-indigo-50 text-indigo-700"
               }`}
           >
             <ExternalLink className="w-4 h-4 mr-2 inline" />
@@ -1248,15 +1252,15 @@ const Discussions = () => {
         {showQuickReply === discussion._id && (
           <div
             className={`mt-6 p-6 rounded-2xl border transition-all duration-300 ${theme === "dark"
-                ? "bg-black/20 border-white/10"
-                : "bg-indigo-50 border-indigo-200"
+              ? "bg-black/20 border-white/10"
+              : "bg-indigo-50 border-indigo-200"
               }`}
           >
             <div className="flex gap-4">
               <div
                 className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-sm ${theme === "dark"
-                    ? "bg-gradient-to-r from-purple-500 to-indigo-500"
-                    : "bg-gradient-to-r from-indigo-600 to-purple-600"
+                  ? "bg-gradient-to-r from-purple-500 to-indigo-500"
+                  : "bg-gradient-to-r from-indigo-600 to-purple-600"
                   }`}
               >
                 YU
@@ -1267,8 +1271,8 @@ const Discussions = () => {
                   onChange={(e) => setReplyText(e.target.value)}
                   placeholder="Write your reply..."
                   className={`w-full p-4 rounded-xl border resize-none transition-all duration-300 focus:outline-none focus:ring-2 focus:scale-105 ${theme === "dark"
-                      ? "bg-white/10 border-white/20 text-white placeholder-gray-400 focus:border-purple-400 focus:ring-purple-400/20"
-                      : "bg-white border-indigo-200 text-indigo-900 placeholder-indigo-400 focus:border-indigo-500 focus:ring-indigo-500/20"
+                    ? "bg-white/10 border-white/20 text-white placeholder-gray-400 focus:border-purple-400 focus:ring-purple-400/20"
+                    : "bg-white border-indigo-200 text-indigo-900 placeholder-indigo-400 focus:border-indigo-500 focus:ring-indigo-500/20"
                     }`}
                   rows={4}
                 />
@@ -1285,8 +1289,8 @@ const Discussions = () => {
                     onClick={() => handleQuickReply(discussion._id)}
                     disabled={!replyText.trim()}
                     className={`px-6 py-2 rounded-xl font-medium transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed ${theme === "dark"
-                        ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
-                        : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+                      ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
+                      : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
                       }`}
                   >
                     <Send className="w-4 h-4 mr-2 inline" />
@@ -1311,15 +1315,15 @@ const Discussions = () => {
               <div
                 key={comment._id}
                 className={`p-4 rounded-xl border ${theme === "dark"
-                    ? "bg-white/5 border-white/10"
-                    : "bg-gray-50 border-gray-200"
+                  ? "bg-white/5 border-white/10"
+                  : "bg-gray-50 border-gray-200"
                   }`}
               >
                 <div className="flex items-start gap-3">
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-white text-xs ${theme === "dark"
-                        ? "bg-gradient-to-r from-green-500 to-teal-500"
-                        : "bg-gradient-to-r from-green-600 to-teal-600"
+                      ? "bg-gradient-to-r from-green-500 to-teal-500"
+                      : "bg-gradient-to-r from-green-600 to-teal-600"
                       }`}
                   >
                     {comment.user?.name?.charAt(0) || "U"}
@@ -1355,8 +1359,8 @@ const Discussions = () => {
                           )
                         }
                         className={`text-xs font-medium transition-colors ${theme === "dark"
-                            ? "text-gray-400 hover:text-white"
-                            : "text-gray-600 hover:text-indigo-900"
+                          ? "text-gray-400 hover:text-white"
+                          : "text-gray-600 hover:text-indigo-900"
                           }`}
                       >
                         <Reply className="w-3 h-3 mr-1 inline" />
@@ -1367,8 +1371,8 @@ const Discussions = () => {
                           handleDeleteComment(comment._id, discussion._id)
                         }
                         className={`text-xs font-medium transition-colors ${theme === "dark"
-                            ? "text-red-400 hover:text-red-300"
-                            : "text-red-600 hover:text-red-500"
+                          ? "text-red-400 hover:text-red-300"
+                          : "text-red-600 hover:text-red-500"
                           }`}
                       >
                         <Trash2 className="w-3 h-3 mr-1 inline" />
@@ -1389,8 +1393,8 @@ const Discussions = () => {
                             }
                             placeholder="Write a reply..."
                             className={`flex-1 p-2 rounded-lg border text-sm resize-none ${theme === "dark"
-                                ? "bg-white/10 border-white/20 text-white placeholder-gray-400"
-                                : "bg-white border-indigo-200 text-indigo-900 placeholder-indigo-400"
+                              ? "bg-white/10 border-white/20 text-white placeholder-gray-400"
+                              : "bg-white border-indigo-200 text-indigo-900 placeholder-indigo-400"
                               }`}
                             rows={2}
                           />
@@ -1398,8 +1402,8 @@ const Discussions = () => {
                             onClick={() => handleReplyToComment(comment._id)}
                             disabled={!replyTexts[comment._id]?.trim()}
                             className={`px-3 py-1 rounded-lg text-xs font-medium transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${theme === "dark"
-                                ? "bg-purple-600 hover:bg-purple-700 text-white"
-                                : "bg-indigo-600 hover:bg-indigo-700 text-white"
+                              ? "bg-purple-600 hover:bg-purple-700 text-white"
+                              : "bg-indigo-600 hover:bg-indigo-700 text-white"
                               }`}
                           >
                             Reply
@@ -1453,8 +1457,8 @@ const Discussions = () => {
               onClick={loadMorePosts}
               disabled={postsLoading}
               className={`px-8 py-4 rounded-2xl font-bold transition-all duration-300 hover:scale-105 transform hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed ${theme === "dark"
-                  ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
-                  : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+                ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
+                : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
                 }`}
             >
               {postsLoading ? (
@@ -1485,15 +1489,15 @@ const Discussions = () => {
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div
           className={`w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl border shadow-2xl ${theme === "dark"
-              ? "bg-slate-900 border-white/20"
-              : "bg-white border-indigo-200"
+            ? "bg-slate-900 border-white/20"
+            : "bg-white border-indigo-200"
             }`}
         >
           {/* Header */}
           <div
             className={`sticky top-0 p-6 border-b backdrop-blur-xl ${theme === "dark"
-                ? "bg-slate-900/80 border-white/20"
-                : "bg-white/80 border-indigo-200"
+              ? "bg-slate-900/80 border-white/20"
+              : "bg-white/80 border-indigo-200"
               }`}
           >
             <div className="flex items-center justify-between">
@@ -1501,8 +1505,8 @@ const Discussions = () => {
                 <button
                   onClick={() => setShowFullPost(false)}
                   className={`p-2 rounded-xl transition-colors ${theme === "dark"
-                      ? "hover:bg-white/10"
-                      : "hover:bg-indigo-100"
+                    ? "hover:bg-white/10"
+                    : "hover:bg-indigo-100"
                     }`}
                 >
                   <ArrowLeft
@@ -1543,8 +1547,8 @@ const Discussions = () => {
             {/* Post Content */}
             <div
               className={`prose prose-lg max-w-none mb-8 ${theme === "dark"
-                  ? "prose-invert text-gray-300"
-                  : "text-indigo-800"
+                ? "prose-invert text-gray-300"
+                : "text-indigo-800"
                 }`}
             >
               <div className="whitespace-pre-wrap">
@@ -1559,8 +1563,8 @@ const Discussions = () => {
                   <span
                     key={i}
                     className={`text-sm px-3 py-1 rounded-full font-medium ${theme === "dark"
-                        ? "bg-purple-900/50 text-purple-300 border border-purple-500/30"
-                        : "bg-purple-100 text-purple-700 border border-purple-300"
+                      ? "bg-purple-900/50 text-purple-300 border border-purple-500/30"
+                      : "bg-purple-100 text-purple-700 border border-purple-300"
                       }`}
                   >
                     #{tag}
@@ -1585,8 +1589,8 @@ const Discussions = () => {
                 <div className="flex gap-4">
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-sm ${theme === "dark"
-                        ? "bg-gradient-to-r from-purple-500 to-indigo-500"
-                        : "bg-gradient-to-r from-indigo-600 to-purple-600"
+                      ? "bg-gradient-to-r from-purple-500 to-indigo-500"
+                      : "bg-gradient-to-r from-indigo-600 to-purple-600"
                       }`}
                   >
                     YU
@@ -1597,8 +1601,8 @@ const Discussions = () => {
                       onChange={(e) => setNewComment(e.target.value)}
                       placeholder="Add a comment..."
                       className={`w-full p-4 rounded-xl border resize-none transition-all duration-300 focus:outline-none focus:ring-2 ${theme === "dark"
-                          ? "bg-white/10 border-white/20 text-white placeholder-gray-400 focus:border-purple-400 focus:ring-purple-400/20"
-                          : "bg-white border-indigo-200 text-indigo-900 placeholder-indigo-400 focus:border-indigo-500 focus:ring-indigo-500/20"
+                        ? "bg-white/10 border-white/20 text-white placeholder-gray-400 focus:border-purple-400 focus:ring-purple-400/20"
+                        : "bg-white border-indigo-200 text-indigo-900 placeholder-indigo-400 focus:border-indigo-500 focus:ring-indigo-500/20"
                         }`}
                       rows={3}
                     />
@@ -1606,40 +1610,40 @@ const Discussions = () => {
                       <div className="flex items-center gap-4">
                         <button
                           className={`p-2 rounded-lg transition-colors ${theme === "dark"
-                              ? "hover:bg-white/10"
-                              : "hover:bg-indigo-100"
+                            ? "hover:bg-white/10"
+                            : "hover:bg-indigo-100"
                             }`}
                         >
                           <ImageIcon
                             className={`w-4 h-4 ${theme === "dark"
-                                ? "text-gray-400"
-                                : "text-indigo-600"
+                              ? "text-gray-400"
+                              : "text-indigo-600"
                               }`}
                           />
                         </button>
                         <button
                           className={`p-2 rounded-lg transition-colors ${theme === "dark"
-                              ? "hover:bg-white/10"
-                              : "hover:bg-indigo-100"
+                            ? "hover:bg-white/10"
+                            : "hover:bg-indigo-100"
                             }`}
                         >
                           <Smile
                             className={`w-4 h-4 ${theme === "dark"
-                                ? "text-gray-400"
-                                : "text-indigo-600"
+                              ? "text-gray-400"
+                              : "text-indigo-600"
                               }`}
                           />
                         </button>
                         <button
                           className={`p-2 rounded-lg transition-colors ${theme === "dark"
-                              ? "hover:bg-white/10"
-                              : "hover:bg-indigo-100"
+                            ? "hover:bg-white/10"
+                            : "hover:bg-indigo-100"
                             }`}
                         >
                           <AtSign
                             className={`w-4 h-4 ${theme === "dark"
-                                ? "text-gray-400"
-                                : "text-indigo-600"
+                              ? "text-gray-400"
+                              : "text-indigo-600"
                               }`}
                           />
                         </button>
@@ -1648,8 +1652,8 @@ const Discussions = () => {
                         onClick={() => handleAddComment(selectedDiscussion._id)}
                         disabled={!newComment.trim()}
                         className={`px-6 py-2 rounded-xl font-medium transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed ${theme === "dark"
-                            ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
-                            : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+                          ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
+                          : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
                           }`}
                       >
                         <Send className="w-4 h-4 mr-2 inline" />
@@ -1666,15 +1670,15 @@ const Discussions = () => {
                   <div key={comment._id} className="space-y-4">
                     <div
                       className={`p-6 rounded-xl border ${theme === "dark"
-                          ? "bg-white/5 border-white/10"
-                          : "bg-gray-50 border-gray-200"
+                        ? "bg-white/5 border-white/10"
+                        : "bg-gray-50 border-gray-200"
                         }`}
                     >
                       <div className="flex items-start gap-4">
                         <div
                           className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-sm ${theme === "dark"
-                              ? "bg-gradient-to-r from-green-500 to-teal-500"
-                              : "bg-gradient-to-r from-green-600 to-teal-600"
+                            ? "bg-gradient-to-r from-green-500 to-teal-500"
+                            : "bg-gradient-to-r from-green-600 to-teal-600"
                             }`}
                         >
                           {comment.user?.name?.charAt(0) || "U"}
@@ -1683,16 +1687,16 @@ const Discussions = () => {
                           <div className="flex items-center gap-3 mb-2">
                             <span
                               className={`font-bold ${theme === "dark"
-                                  ? "text-white"
-                                  : "text-indigo-900"
+                                ? "text-white"
+                                : "text-indigo-900"
                                 }`}
                             >
                               {comment.user?.name || "Anonymous"}
                             </span>
                             <span
                               className={`text-sm ${theme === "dark"
-                                  ? "text-gray-400"
-                                  : "text-gray-600"
+                                ? "text-gray-400"
+                                : "text-gray-600"
                                 }`}
                             >
                               {comment.createdAt
@@ -1704,8 +1708,8 @@ const Discussions = () => {
                           </div>
                           <p
                             className={`mb-4 ${theme === "dark"
-                                ? "text-gray-300"
-                                : "text-indigo-800"
+                              ? "text-gray-300"
+                              : "text-indigo-800"
                               }`}
                           >
                             {comment.content || comment.text}
@@ -1720,8 +1724,8 @@ const Discussions = () => {
                                 )
                               }
                               className={`flex items-center gap-2 text-sm font-medium transition-colors ${theme === "dark"
-                                  ? "text-gray-400 hover:text-white"
-                                  : "text-gray-600 hover:text-indigo-900"
+                                ? "text-gray-400 hover:text-white"
+                                : "text-gray-600 hover:text-indigo-900"
                                 }`}
                             >
                               <Reply className="w-4 h-4" />
@@ -1735,8 +1739,8 @@ const Discussions = () => {
                                 )
                               }
                               className={`flex items-center gap-2 text-sm font-medium transition-colors ${theme === "dark"
-                                  ? "text-red-400 hover:text-red-300"
-                                  : "text-red-600 hover:text-red-500"
+                                ? "text-red-400 hover:text-red-300"
+                                : "text-red-600 hover:text-red-500"
                                 }`}
                             >
                               <Trash2 className="w-4 h-4" />
@@ -1757,8 +1761,8 @@ const Discussions = () => {
                                   }
                                   placeholder="Write a reply..."
                                   className={`flex-1 p-3 rounded-lg border text-sm resize-none ${theme === "dark"
-                                      ? "bg-white/10 border-white/20 text-white placeholder-gray-400"
-                                      : "bg-white border-indigo-200 text-indigo-900 placeholder-indigo-400"
+                                    ? "bg-white/10 border-white/20 text-white placeholder-gray-400"
+                                    : "bg-white border-indigo-200 text-indigo-900 placeholder-indigo-400"
                                     }`}
                                   rows={3}
                                 />
@@ -1768,8 +1772,8 @@ const Discussions = () => {
                                   }
                                   disabled={!replyTexts[comment._id]?.trim()}
                                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${theme === "dark"
-                                      ? "bg-purple-600 hover:bg-purple-700 text-white"
-                                      : "bg-indigo-600 hover:bg-indigo-700 text-white"
+                                    ? "bg-purple-600 hover:bg-purple-700 text-white"
+                                    : "bg-indigo-600 hover:bg-indigo-700 text-white"
                                     }`}
                                 >
                                   Reply
@@ -1786,15 +1790,15 @@ const Discussions = () => {
                           <div
                             key={reply._id}
                             className={`p-4 rounded-lg border text-sm ${theme === "dark"
-                                ? "bg-white/5 border-white/10 text-gray-300"
-                                : "bg-gray-50 border-gray-200 text-indigo-800"
+                              ? "bg-white/5 border-white/10 text-gray-300"
+                              : "bg-gray-50 border-gray-200 text-indigo-800"
                               }`}
                           >
                             <div className="flex items-start gap-3">
                               <div
                                 className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-white text-xs ${theme === "dark"
-                                    ? "bg-gradient-to-r from-green-500 to-teal-500"
-                                    : "bg-gradient-to-r from-green-600 to-teal-600"
+                                  ? "bg-gradient-to-r from-green-500 to-teal-500"
+                                  : "bg-gradient-to-r from-green-600 to-teal-600"
                                   }`}
                               >
                                 {reply.user?.name?.charAt(0) || "U"}
@@ -1827,8 +1831,8 @@ const Discussions = () => {
   const TrendingTopics = () => (
     <div
       className={`backdrop-blur-xl rounded-2xl p-6 border transition-all duration-300 hover:shadow-lg ${theme === "dark"
-          ? "bg-white/5 border-white/10"
-          : "bg-white border-indigo-200"
+        ? "bg-white/5 border-white/10"
+        : "bg-white border-indigo-200"
         }`}
     >
       <div className="flex items-center gap-2 mb-6">
@@ -1852,8 +1856,8 @@ const Discussions = () => {
           <div
             key={i}
             className={`p-4 rounded-xl transition-all duration-300 hover:scale-105 cursor-pointer ${theme === "dark"
-                ? "bg-white/5 hover:bg-white/10"
-                : "bg-indigo-50 hover:bg-indigo-100"
+              ? "bg-white/5 hover:bg-white/10"
+              : "bg-indigo-50 hover:bg-indigo-100"
               }`}
           >
             <div className="flex items-center justify-between mb-2">
@@ -1899,8 +1903,8 @@ const Discussions = () => {
   const RecentActivity = () => (
     <div
       className={`backdrop-blur-xl rounded-2xl p-6 border transition-all duration-300 hover:shadow-lg ${theme === "dark"
-          ? "bg-white/5 border-white/10"
-          : "bg-white border-indigo-200"
+        ? "bg-white/5 border-white/10"
+        : "bg-white border-indigo-200"
         }`}
     >
       <div className="flex items-center gap-2 mb-6">
@@ -1925,8 +1929,8 @@ const Discussions = () => {
           >
             <div
               className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-white ${theme === "dark"
-                  ? "bg-gradient-to-r from-purple-500 to-indigo-500"
-                  : "bg-gradient-to-r from-indigo-600 to-purple-600"
+                ? "bg-gradient-to-r from-purple-500 to-indigo-500"
+                : "bg-gradient-to-r from-indigo-600 to-purple-600"
                 }`}
             >
               {activity.avatar}
@@ -1967,8 +1971,8 @@ const Discussions = () => {
   const OnlineUsers = () => (
     <div
       className={`backdrop-blur-xl rounded-2xl p-6 border transition-all duration-300 hover:shadow-lg ${theme === "dark"
-          ? "bg-white/5 border-white/10"
-          : "bg-white border-indigo-200"
+        ? "bg-white/5 border-white/10"
+        : "bg-white border-indigo-200"
         }`}
     >
       <div className="flex items-center gap-2 mb-6">
@@ -2016,8 +2020,8 @@ const Discussions = () => {
     return (
       <div
         className={`min-h-screen flex items-center justify-center ${theme === "dark"
-            ? "bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900"
-            : "bg-gradient-to-br from-indigo-50 via-white to-purple-50"
+          ? "bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900"
+          : "bg-gradient-to-br from-indigo-50 via-white to-purple-50"
           }`}
       >
         <div className="text-center">
@@ -2039,15 +2043,15 @@ const Discussions = () => {
   return (
     <div
       className={`min-h-screen transition-all duration-500 ${theme === "dark"
-          ? "bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900"
-          : "bg-gradient-to-br from-indigo-50 via-white to-purple-50"
+        ? "bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900"
+        : "bg-gradient-to-br from-indigo-50 via-white to-purple-50"
         }`}
     >
       {/* Enhanced Header */}
       <header
         className={`sticky top-0 z-50 backdrop-blur-xl border-b transition-all duration-300 ${theme === "dark"
-            ? "bg-black/20 border-white/10"
-            : "bg-white/80 border-indigo-200"
+          ? "bg-black/20 border-white/10"
+          : "bg-white/80 border-indigo-200"
           }`}
       >
         <div className="max-w-7xl mx-auto px-6 py-4">
@@ -2089,8 +2093,8 @@ const Discussions = () => {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className={`pl-12 pr-4 py-3 rounded-2xl border transition-all duration-300 focus:outline-none focus:ring-2 focus:scale-105 w-80 ${theme === "dark"
-                      ? "bg-white/10 border-white/20 text-white placeholder-gray-400 focus:border-purple-400 focus:ring-purple-400/20"
-                      : "bg-white border-indigo-200 text-indigo-900 placeholder-indigo-400 focus:border-indigo-500 focus:ring-indigo-500/20"
+                    ? "bg-white/10 border-white/20 text-white placeholder-gray-400 focus:border-purple-400 focus:ring-purple-400/20"
+                    : "bg-white border-indigo-200 text-indigo-900 placeholder-indigo-400 focus:border-indigo-500 focus:ring-indigo-500/20"
                     }`}
                 />
               </div>
@@ -2098,8 +2102,8 @@ const Discussions = () => {
                 <button
                   onClick={() => setShowNotifications(!showNotifications)}
                   className={`p-3 rounded-xl transition-all duration-300 hover:scale-110 relative ${theme === "dark"
-                      ? "hover:bg-white/10"
-                      : "hover:bg-indigo-100"
+                    ? "hover:bg-white/10"
+                    : "hover:bg-indigo-100"
                     }`}
                 >
                   <Bell
@@ -2115,8 +2119,8 @@ const Discussions = () => {
                 {showNotifications && (
                   <div
                     className={`absolute right-0 top-full mt-2 w-96 backdrop-blur-xl rounded-2xl border shadow-2xl z-50 ${theme === "dark"
-                        ? "bg-black/80 border-white/20"
-                        : "bg-white/90 border-indigo-200"
+                      ? "bg-black/80 border-white/20"
+                      : "bg-white/90 border-indigo-200"
                       }`}
                   >
                     <div className="p-6">
@@ -2130,14 +2134,14 @@ const Discussions = () => {
                         <button
                           onClick={() => setShowNotifications(false)}
                           className={`p-2 rounded-lg transition-colors ${theme === "dark"
-                              ? "hover:bg-white/10"
-                              : "hover:bg-indigo-100"
+                            ? "hover:bg-white/10"
+                            : "hover:bg-indigo-100"
                             }`}
                         >
                           <X
                             className={`w-4 h-4 ${theme === "dark"
-                                ? "text-gray-400"
-                                : "text-indigo-600"
+                              ? "text-gray-400"
+                              : "text-indigo-600"
                               }`}
                           />
                         </button>
@@ -2147,19 +2151,19 @@ const Discussions = () => {
                           <div
                             key={notification.id}
                             className={`p-4 rounded-xl transition-all duration-300 hover:scale-105 cursor-pointer ${notification.unread
-                                ? theme === "dark"
-                                  ? "bg-purple-900/30 border border-purple-500/30"
-                                  : "bg-indigo-100 border border-indigo-300"
-                                : theme === "dark"
-                                  ? "bg-white/5 hover:bg-white/10"
-                                  : "bg-gray-50 hover:bg-gray-100"
+                              ? theme === "dark"
+                                ? "bg-purple-900/30 border border-purple-500/30"
+                                : "bg-indigo-100 border border-indigo-300"
+                              : theme === "dark"
+                                ? "bg-white/5 hover:bg-white/10"
+                                : "bg-gray-50 hover:bg-gray-100"
                               }`}
                           >
                             <div className="flex items-start gap-3">
                               <div
                                 className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-white ${theme === "dark"
-                                    ? "bg-gradient-to-r from-purple-500 to-indigo-500"
-                                    : "bg-gradient-to-r from-indigo-600 to-purple-600"
+                                  ? "bg-gradient-to-r from-purple-500 to-indigo-500"
+                                  : "bg-gradient-to-r from-indigo-600 to-purple-600"
                                   }`}
                               >
                                 {notification.avatar}
@@ -2167,8 +2171,8 @@ const Discussions = () => {
                               <div className="flex-1">
                                 <p
                                   className={`text-sm ${theme === "dark"
-                                      ? "text-gray-300"
-                                      : "text-indigo-700"
+                                    ? "text-gray-300"
+                                    : "text-indigo-700"
                                     }`}
                                 >
                                   <span className="font-bold">
@@ -2178,8 +2182,8 @@ const Discussions = () => {
                                 </p>
                                 <p
                                   className={`text-xs mt-1 ${theme === "dark"
-                                      ? "text-gray-500"
-                                      : "text-gray-500"
+                                    ? "text-gray-500"
+                                    : "text-gray-500"
                                     }`}
                                 >
                                   {notification.time}
@@ -2210,8 +2214,8 @@ const Discussions = () => {
               <button
                 onClick={() => setShowCreateModal(true)}
                 className={`px-6 py-3 rounded-2xl font-bold transition-all duration-300 hover:scale-105 transform hover:shadow-xl ${theme === "dark"
-                    ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
-                    : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+                  ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
+                  : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
                   }`}
               >
                 <Plus className="w-4 h-4 mr-2 inline" />
@@ -2221,6 +2225,14 @@ const Discussions = () => {
           </div>
         </div>
       </header>
+      {showCreateModal && (
+  <CreatePostModal
+    setShowCreateModal={setShowCreateModal}
+    userCommunitiesID={userCommunitiesID} // array of community objects
+    theme={theme}
+  />
+)}
+
 
       {/* Enhanced Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-8">
@@ -2248,12 +2260,12 @@ const Discussions = () => {
                         key={tab}
                         onClick={() => setActiveTab(tab)}
                         className={`px-6 py-3 rounded-xl font-bold transition-all duration-300 hover:scale-105 ${activeTab === tab
-                            ? theme === "dark"
-                              ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg"
-                              : "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg"
-                            : theme === "dark"
-                              ? "text-gray-300 hover:text-white hover:bg-white/10"
-                              : "text-indigo-700 hover:text-indigo-900 hover:bg-white/50"
+                          ? theme === "dark"
+                            ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg"
+                            : "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg"
+                          : theme === "dark"
+                            ? "text-gray-300 hover:text-white hover:bg-white/10"
+                            : "text-indigo-700 hover:text-indigo-900 hover:bg-white/50"
                           }`}
                       >
                         {tab}
@@ -2272,12 +2284,12 @@ const Discussions = () => {
                             key={filter}
                             onClick={() => setActiveFilter(filter)}
                             className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 hover:scale-105 ${activeFilter === filter
-                                ? theme === "dark"
-                                  ? "bg-purple-600 text-white"
-                                  : "bg-indigo-600 text-white"
-                                : theme === "dark"
-                                  ? "bg-white/10 text-gray-300 hover:bg-white/20"
-                                  : "bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
+                              ? theme === "dark"
+                                ? "bg-purple-600 text-white"
+                                : "bg-indigo-600 text-white"
+                              : theme === "dark"
+                                ? "bg-white/10 text-gray-300 hover:bg-white/20"
+                                : "bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
                               }`}
                           >
                             {filter}
@@ -2294,8 +2306,8 @@ const Discussions = () => {
                         value={sortBy}
                         onChange={(e) => setSortBy(e.target.value)}
                         className={`px-4 py-2 rounded-xl border font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:scale-105 ${theme === "dark"
-                            ? "bg-white/10 border-white/20 text-white focus:border-purple-400 focus:ring-purple-400/20"
-                            : "bg-white border-indigo-200 text-indigo-900 focus:border-indigo-500 focus:ring-indigo-500/20"
+                          ? "bg-white/10 border-white/20 text-white focus:border-purple-400 focus:ring-purple-400/20"
+                          : "bg-white border-indigo-200 text-indigo-900 focus:border-indigo-500 focus:ring-indigo-500/20"
                           }`}
                       >
                         {sortOptions.map((option) => (
@@ -2318,8 +2330,8 @@ const Discussions = () => {
                     <div className="flex items-center gap-3 mb-6">
                       <Users
                         className={`w-6 h-6 ${theme === "dark"
-                            ? "text-yellow-400"
-                            : "text-indigo-600"
+                          ? "text-yellow-400"
+                          : "text-indigo-600"
                           }`}
                       />
                       <h2
@@ -2330,8 +2342,8 @@ const Discussions = () => {
                       </h2>
                       <div
                         className={`px-3 py-1 rounded-full text-sm font-bold ${theme === "dark"
-                            ? "bg-purple-600 text-white"
-                            : "bg-indigo-600 text-white"
+                          ? "bg-purple-600 text-white"
+                          : "bg-indigo-600 text-white"
                           }`}
                       >
                         {communities.length}
@@ -2364,8 +2376,8 @@ const Discussions = () => {
                       </h2>
                       <div
                         className={`px-3 py-1 rounded-full text-sm font-bold ${theme === "dark"
-                            ? "bg-blue-600 text-white"
-                            : "bg-blue-600 text-white"
+                          ? "bg-blue-600 text-white"
+                          : "bg-blue-600 text-white"
                           }`}
                       >
                         {filteredDiscussions.length}
