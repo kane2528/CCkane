@@ -149,6 +149,7 @@ const PaymentPage = () => {
 
             const res = await axios.post(
                 `${process.env.NEXT_PUBLIC_SITE_URL}/api/payment/initiate-refund-for-all`,
+
                 {},
                 {
                     headers: {

@@ -39,7 +39,7 @@ export default function OrganizationsPage() {
 
   // API Configuration
   const API_BASE_URL =
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:3006/api/auth/";
+    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3006";
 
   // Get auth token from localStorage or your auth context
   const getAuthToken = () => {
@@ -70,7 +70,7 @@ export default function OrganizationsPage() {
   const [newEvent, setNewEvent] = useState({
     title: "",
     description: "",
-    category: "Technology",
+    category: "Tech",
     eventDate: "",
     eventStart: "",
     eventEnd: "",
@@ -86,17 +86,12 @@ export default function OrganizationsPage() {
 
   // Event Categories
   const eventCategories = [
-    "Technology",
-    "Business",
+
+    "Tech",
     "Cultural",
     "Sports",
-    "Academic",
-    "Social",
-    "Environmental",
     "Workshop",
-    "Seminar",
-    "Conference",
-    "Competition",
+    "Webinar",
     "Other",
   ];
 
@@ -108,7 +103,9 @@ export default function OrganizationsPage() {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiClient.get("/get-organisations-for-admin");
+
+      const response = await apiClient.get("/api/auth/get-organisations-for-admin");
+
       if (response.data && response.data.organisations) {
         const firstOrgId = response.data.organisations[0]?._id;
         if (firstOrgId) {
@@ -152,7 +149,7 @@ export default function OrganizationsPage() {
           description:
             "A community of tech enthusiasts working on cutting-edge projects and innovations.",
           type: "Club",
-          category: "Technology",
+          category: "Tech",
           website: "https://techinnovation.club",
           email: "contact@techinnovation.club",
           phone: "+91 98765 43210",
@@ -213,7 +210,7 @@ export default function OrganizationsPage() {
     name: "",
     description: "",
     type: "Club",
-    category: "Technology",
+    category: "Tech",
     website: "",
     email: "",
     phone: "",
@@ -275,7 +272,7 @@ export default function OrganizationsPage() {
             name: "",
             description: "",
             type: "Club",
-            category: "Technology",
+            category: "Tech",
             website: "",
             email: "",
             phone: "",
@@ -457,7 +454,7 @@ export default function OrganizationsPage() {
           setNewEvent({
             title: "",
             description: "",
-            category: "Technology",
+            category: "Tech",
             eventDate: "",
             eventStart: "",
             eventEnd: "",
@@ -495,13 +492,11 @@ export default function OrganizationsPage() {
   ];
 
   const orgCategories = [
-    "Technology",
-    "Business",
+    "Tech",
     "Cultural",
     "Sports",
-    "Academic",
-    "Social",
-    "Environmental",
+    "Workshop",
+    "Webinar",
     "Other",
   ];
 

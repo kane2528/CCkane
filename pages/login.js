@@ -120,6 +120,7 @@ export default function LoginPage() {
       const { token, user } = response.data;
       const role = user.role;
       setUserCC(user);
+
       // Set token in cookies (expires in 7 days)
       Cookies.set("token", token, { expires: 7 });
       Cookies.set("userId", response.data.user.id, { expires: 7 });
