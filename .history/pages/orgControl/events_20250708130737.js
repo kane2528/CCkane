@@ -24,7 +24,6 @@ import { userAtom } from "@/recoil/userAtom";
 import RoleBasedAccess from "../components/RoleBasedAccess";
 
 export default function EventsPage() {
-  const user = useRecoilValue(userAtom);
   const [theme, setTheme] = useState("dark");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");

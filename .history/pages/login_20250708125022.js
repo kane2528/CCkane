@@ -130,7 +130,7 @@ export default function LoginPage() {
 
       // Redirect to dashboard
 
-      window.location.href = "/discussion";
+      // window.location.href = "/";
     } catch (error) {
       if (error.response) {
         // Server responded with a status other than 2xx

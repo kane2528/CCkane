@@ -51,8 +51,8 @@ export default function Navbar({ theme = "dark", onThemeToggle }) {
     try {
       const response = await axios.post(
         `${
-          process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3006"
-        }/api/auth/logout`,
+          process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3006/api"
+        }/auth/logout`,
         {},
         {
           headers: {

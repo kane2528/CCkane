@@ -35,7 +35,7 @@ export default function LoginPage() {
   const [theme, setTheme] = useState("dark");
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isVisible, setIsVisible] = useState(false);
-  const setUserCC = useSetRecoilState(userAtom);
+  const setUser = useSetRecoilState(userAtom);
 
   // Mouse tracking for interactive effects
   useEffect(() => {
@@ -119,7 +119,7 @@ export default function LoginPage() {
       // On success
       const { token, user } = response.data;
       const role = user.role;
-      setUserCC(user);
+      setUser(user);
       // Set token in cookies (expires in 7 days)
       Cookies.set("token", token, { expires: 7 });
       Cookies.set("userId", response.data.user.id, { expires: 7 });
@@ -130,7 +130,7 @@ export default function LoginPage() {
 
       // Redirect to dashboard
 
-      window.location.href = "/discussion";
+      // window.location.href = "/";
     } catch (error) {
       if (error.response) {
         // Server responded with a status other than 2xx

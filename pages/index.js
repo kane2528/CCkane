@@ -2042,7 +2042,7 @@ const Home = () => {
       ></div>
 
       <div className="relative z-10">
-        <Navbar/>
+        <Navbar />
         {/* Enhanced Hero Section */}
         <section className="pt-20 pb-16 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto">

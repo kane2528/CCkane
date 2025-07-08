@@ -107,7 +107,7 @@ export default function EventsPage() {
       setLoading(true);
       setError(null);
 
-      const response = await apiClient.get("/api/event/get-upcoming-events");
+      const response = await apiClient.get("/get-upcoming-events");
 
       if (response.data && response.data.events) {
         const transformedEvents = response.data.events.map((event) => ({

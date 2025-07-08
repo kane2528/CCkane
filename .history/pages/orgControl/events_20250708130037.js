@@ -20,11 +20,10 @@ import axios from "axios";
 import Cookies from "js-cookie";
 import toast from "react-hot-toast";
 import { useRecoilValue } from "recoil";
-import { userAtom } from "@/recoil/userAtom";
-import RoleBasedAccess from "../components/RoleBasedAccess";
+import { userAtom } from "@/atoms/userAtom";
+import RoleBasedAccess from "@/components/RoleBasedAccess";
 
 export default function EventsPage() {
-  const user = useRecoilValue(userAtom);
   const [theme, setTheme] = useState("dark");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -577,6 +576,8 @@ export default function EventsPage() {
       </div>
     );
   }
+
+  const user = useRecoilValue(userAtom);
 
   // If you want to show a loading state while checking role
   if (!user.role) {

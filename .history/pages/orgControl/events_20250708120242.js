@@ -1,9 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
-import Navbar from "./components/navbar";
+import Navbar from "../components/navbar";
 import {
   Search,
-  Plus,
   Edit,
   Trash2,
   Calendar,
@@ -19,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import axios from "axios";
 import Cookies from "js-cookie";
+import toast from "react-hot-toast";
 
 export default function EventsPage() {
   const [theme, setTheme] = useState("dark");
@@ -47,6 +47,8 @@ export default function EventsPage() {
     "Sports",
     "Cultural",
   ];
+
+  const eventTypes = ["Offline", "Online"];
 
   // API Configuration
   const API_BASE_URL = process.env.NEXT_PUBLIC_SITE_URL;
@@ -106,15 +108,38 @@ export default function EventsPage() {
     try {
       setLoading(true);
       setError(null);
-
       const response = await apiClient.get("/api/event/get-upcoming-events");
-
       if (response.data && response.data.events) {
         const transformedEvents = response.data.events.map((event) => ({
           id: event._id,
-          type: safeString(event.eventType?.type) || "General",
-          name: safeString(event.title),
+          title: safeString(event.title),
+          name: safeString(event.title), // Keep for backward compatibility
           description: safeString(event.description),
+          category: safeString(event.category),
+          eventDate: event.eventDate
+            ? new Date(event.eventDate).toISOString().split("T")[0]
+            : "",
+          eventStart: event.eventStart
+            ? new Date(event.eventStart).toTimeString().slice(0, 5)
+            : "",
+          eventEnd: event.eventEnd
+            ? new Date(event.eventEnd).toTimeString().slice(0, 5)
+            : "",
+          registrationDeadline: event.registrationDeadline
+            ? new Date(event.registrationDeadline).toISOString().slice(0, 16)
+            : "",
+          maxParticipants: event.maxParticipants || 0,
+          tags: safeArray(event.tags),
+          bannerImage:
+            safeString(event.bannerImage) ||
+            "/placeholder.svg?height=200&width=400",
+          hostedBy: safeString(event.organiser?.name) || "Unknown Organizer",
+          eventType: {
+            type: safeString(event.eventType?.type) || "offline",
+            locationDetails: safeString(event.eventType?.locationDetails) || "",
+          },
+          // Additional fields for display
+          type: safeString(event.eventType?.type) || "General",
           date: event.eventDate
             ? new Date(event.eventDate).toISOString().split("T")[0]
             : "",
@@ -132,49 +157,62 @@ export default function EventsPage() {
             event.eventType?.locationDetails || event.locationDetails
           ),
           attendees: event.participants?.length || 0,
-          maxParticipants: event.maxParticipants || 0,
           organizer: safeString(event.organiser?.name) || "Unknown Organizer",
           organizerHead: safeString(event.organiser?.head?.name),
           organizerEmail: safeString(event.organiser?.head?.email),
           organizerPhone: safeString(event.organiser?.head?.mobile),
+          registrationStart: "", // not provided in your sample
           registrationEnd: event.registrationDeadline
             ? new Date(event.registrationDeadline).toISOString().split("T")[0]
             : "",
           banner:
             safeString(event.bannerImage) ||
             "/placeholder.svg?height=200&width=400",
-          tags: safeArray(event.tags),
+          requirements: safeString(event.requirements),
           contact: safeString(event.organiser?.head?.email),
           fee: event.registrationFee ? `₹${event.registrationFee}` : "Free",
           status: safeString(event.status) || "Upcoming",
           eventMode: safeString(event.eventType?.type),
           eventCategory: safeString(event.category),
+          prizes: safeArray(event.prizes),
+          sponsors: safeArray(event.sponsors),
+          agenda: safeString(event.agenda),
         }));
-
         setEvents(transformedEvents);
       }
     } catch (err) {
       console.error("Error fetching events:", err);
       setError(err.response?.data?.message || "Failed to fetch events");
-
       // Optional fallback
       setEvents([
         {
           id: 1,
-          type: "Technology",
+          title: "AI & Machine Learning Summit",
           name: "AI & Machine Learning Summit",
           description:
             "Join industry experts for a comprehensive discussion on the latest AI trends.",
+          category: "Technology",
+          eventDate: "2025-07-10",
+          eventStart: "10:00",
+          eventEnd: "13:00",
+          registrationDeadline: "2025-07-09T23:59",
+          maxParticipants: 500,
+          tags: ["AI", "ML", "Innovation"],
+          bannerImage: "/placeholder.svg?height=200&width=400",
+          hostedBy: "Tech Innovation Club",
+          eventType: {
+            type: "offline",
+            locationDetails: "IIT Delhi, New Delhi",
+          },
+          type: "Technology",
           date: "2025-07-10",
           time: "10:00 AM - 01:00 PM",
           location: "IIT Delhi, New Delhi",
           attendees: 0,
-          maxParticipants: 500,
           organizer: "Tech Innovation Club",
           registrationStart: "2025-06-01",
           registrationEnd: "2025-07-09",
           banner: "/placeholder.svg?height=200&width=400",
-          tags: ["AI", "ML", "Innovation"],
           requirements: "Basic programming",
           contact: "tech@iitdelhi.ac.in",
           fee: "Free",
@@ -196,21 +234,55 @@ export default function EventsPage() {
     fetchEvents();
   }, []);
 
-  const [newEvent, setNewEvent] = useState({
-    type: "Technology",
-    name: "",
+  const handleDeleteEvent = async (eventId) => {
+    const token = getAuthToken();
+    try {
+      const response = await axios.delete(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:3006/api"
+        }/event/delete-event`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          params: {
+            eventId,
+          },
+        }
+      );
+      // Refresh events after successful deletion
+      await fetchEvents();
+      return response.data;
+    } catch (error) {
+      console.error(
+        "Delete Event Error:",
+        error.response?.data || error.message
+      );
+      setError(error.response?.data?.message || "Failed to delete event");
+      throw (
+        error.response?.data ||
+        new Error("An error occurred while deleting the event.")
+      );
+    }
+  };
+
+  // Initialize editing event state
+  const [editingEventData, setEditingEventData] = useState({
+    title: "",
     description: "",
-    date: "",
-    time: "",
-    location: "",
+    category: "Technology",
+    eventDate: "",
+    eventStart: "",
+    eventEnd: "",
+    registrationDeadline: "",
     maxParticipants: "",
-    organizer: "",
-    registrationStart: "",
-    registrationEnd: "",
     tags: "",
-    requirements: "",
-    contact: "",
-    fee: "",
+    bannerImage: "",
+    hostedBy: "",
+    eventType: {
+      type: "offline",
+      locationDetails: "",
+    },
   });
 
   // Filter events based on search and category
@@ -223,108 +295,106 @@ export default function EventsPage() {
     ]
       .join(" ")
       .toLowerCase();
-
     const matchesSearch = searchableText.includes(searchQuery.toLowerCase());
     const matchesCategory =
       selectedCategory === "All" || event.type === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
-  const handleAddEvent = async () => {
-    if (newEvent.name && newEvent.description && newEvent.date) {
-      try {
-        // Prepare data for API
-        const eventData = {
-          title: newEvent.name,
-          description: newEvent.description,
-          category: newEvent.category,
-          eventDate: newEvent.date,
-          eventStart: newEvent.time?.start,
-          eventEnd: newEvent.time?.end,
-          eventType: {
-            type: newEvent.type,
-            locationDetails: newEvent.location,
-          },
-          registrationDeadline: newEvent.registrationEnd,
-          maxParticipants: Number.parseInt(newEvent.maxParticipants) || 0,
-          tags: newEvent.tags.split(",").map((tag) => tag.trim()),
-          bannerImage: newEvent.bannerImage || "", // If you support image upload later
-        };
-
-        // Make API call to create event
-        const response = await apiClient.post(
-          `/add-event/${organisationId}`,
-          eventData
-        );
-        if (response.data) {
-          // Refresh events list
-          await fetchEvents();
-          // Reset form
-          setNewEvent({
-            type: "Technology",
-            name: "",
-            description: "",
-            date: "",
-            time: "",
-            location: "",
-            maxParticipants: "",
-            organizer: "",
-            registrationStart: "",
-            registrationEnd: "",
-            tags: "",
-            requirements: "",
-            contact: "",
-            fee: "",
-          });
-          setShowEventModal(false);
-        }
-      } catch (err) {
-        console.error("Error creating event:", err);
-        setError(err.response?.data?.message || "Failed to create event");
-      }
-    }
-  };
-
   const handleEditEvent = (event) => {
-    setEditingEvent({
-      ...event,
-      tags: Array.isArray(event.tags) ? event.tags.join(", ") : "",
+    setEditingEvent(event);
+    setEditingEventData({
+      title: event.title || event.name || "",
+      description: event.description || "",
+      category: event.category || event.eventCategory || "Technology",
+      eventDate: event.eventDate || event.date || "",
+      eventStart: event.eventStart || "",
+      eventEnd: event.eventEnd || "",
+      registrationDeadline: event.registrationDeadline || "",
+      maxParticipants: event.maxParticipants?.toString() || "",
+      tags: Array.isArray(event.tags)
+        ? event.tags.join(", ")
+        : event.tags || "",
+      bannerImage: event.bannerImage || event.banner || "",
+      hostedBy: event.hostedBy || event.organizer || "",
+      eventType: {
+        type: event.eventType?.type || event.eventMode || "offline",
+        locationDetails:
+          event.eventType?.locationDetails || event.location || "",
+      },
     });
     setShowEventModal(true);
   };
 
   const handleUpdateEvent = async () => {
-    if (editingEvent.name && editingEvent.description && editingEvent.date) {
+    if (
+      editingEventData.title &&
+      editingEventData.description &&
+      editingEventData.eventDate
+    ) {
+      const eventStartDateTime = new Date(
+        `${editingEventData.eventDate}T${editingEventData.eventStart}`
+      );
+      const eventEndDateTime = new Date(
+        `${editingEventData.eventDate}T${editingEventData.eventEnd}`
+      );
+
       try {
         // Prepare data for API
         const eventData = {
-          eventName: editingEvent.name,
-          description: editingEvent.description,
-          eventDate: editingEvent.date,
-          eventTime: editingEvent.time,
-          venue: editingEvent.location,
-          maxParticipants: Number.parseInt(editingEvent.maxParticipants) || 0,
-          registrationStartDate: editingEvent.registrationStart,
-          registrationEndDate: editingEvent.registrationEnd,
-          eventType: editingEvent.type,
-          tags: editingEvent.tags.split(",").map((tag) => tag.trim()),
-          requirements: editingEvent.requirements,
-          contactEmail: editingEvent.contact,
-          registrationFee:
-            editingEvent.fee === "Free"
-              ? 0
-              : Number.parseFloat(editingEvent.fee.replace(/[^\d.]/g, "")) || 0,
+          title: editingEventData.title,
+          description: editingEventData.description,
+          category: editingEventData.category,
+          eventDate: editingEventData.eventDate,
+          eventStart: eventStartDateTime,
+          eventEnd: eventEndDateTime,
+          registrationDeadline: editingEventData.registrationDeadline,
+          maxParticipants: editingEventData.maxParticipants
+            ? Number.parseInt(editingEventData.maxParticipants)
+            : 0,
+          tags: editingEventData.tags
+            ? editingEventData.tags
+                .split(",")
+                .map((tag) => tag.trim())
+                .filter((tag) => tag)
+            : [],
+          bannerImage: editingEventData.bannerImage,
+          hostedBy: editingEventData.hostedById, // ✅ Must be ObjectId
+          eventType: {
+            type:
+              editingEventData.eventType.type === "In-Person"
+                ? "Offline"
+                : editingEventData.eventType.type,
+            locationDetails: editingEventData.eventType.locationDetails,
+          },
         };
 
         // Make API call to update event
         const response = await apiClient.put(
-          `/update-event/${editingEvent.id}`,
+          `/edit-event?eventId=${editingEvent.id}`,
           eventData
         );
         if (response.data) {
           // Refresh events list
           await fetchEvents();
           setEditingEvent(null);
+          setEditingEventData({
+            title: "",
+            description: "",
+            category: "Technology",
+            eventDate: "",
+            eventStart: "",
+            eventEnd: "",
+            registrationDeadline: "",
+            maxParticipants: "",
+            tags: "",
+            bannerImage: "",
+            hostedBy: "",
+            eventType: {
+              type: "Offline",
+              locationDetails: "",
+            },
+          });
           setShowEventModal(false);
         }
       } catch (err) {
@@ -334,25 +404,33 @@ export default function EventsPage() {
     }
   };
 
-  const handleDeleteEvent = async (eventId) => {
-    if (window.confirm("Are you sure you want to delete this event?")) {
-      try {
-        await apiClient.delete(`/delete-event/${eventId}`);
-        // Refresh events list
-        await fetchEvents();
-      } catch (err) {
-        console.error("Error deleting event:", err);
-        setError(err.response?.data?.message || "Failed to delete event");
-      }
-    }
-  };
-
   const openEventDetails = (event) => {
     setSelectedEvent(event);
     setShowEventDetails(true);
   };
 
-  const currentEvent = editingEvent || newEvent;
+  const registerForEvent = async (eventId) => {
+    const token = getAuthToken();
+
+    try {
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_SITE_URL}/api/event/register-for-event/${eventId}`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      toast.success(response.data.message);
+      return response.data;
+    } catch (error) {
+      const errMsg = error?.response?.data?.message || "Something went wrong!";
+      toast.error(errMsg);
+      throw error.response?.data || { message: errMsg };
+    }
+  };
 
   // Loading state
   if (loading) {
@@ -509,10 +587,34 @@ export default function EventsPage() {
                           : "bg-indigo-100 text-indigo-700"
                       }`}
                     >
-                      {Array.isArray(event.tags)
-                        ? event.tags.join(", ")
-                        : event.tags}
+                      {Array.isArray(event.eventCategory)
+                        ? event.eventCategory.join(", ")
+                        : event.eventCategory}
                     </span>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="absolute top-4 right-4 z-10 flex gap-2">
+                    <button
+                      onClick={() => handleEditEvent(event)}
+                      className={`p-2 rounded-full backdrop-blur-xl transition-all duration-300 hover:scale-110 ${
+                        theme === "dark"
+                          ? "bg-white/10 hover:bg-white/20 text-white"
+                          : "bg-white/80 hover:bg-white text-indigo-600"
+                      }`}
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteEvent(event.id)}
+                      className={`p-2 rounded-full backdrop-blur-xl transition-all duration-300 hover:scale-110 ${
+                        theme === "dark"
+                          ? "bg-red-900/50 hover:bg-red-900/70 text-red-300"
+                          : "bg-red-100 hover:bg-red-200 text-red-600"
+                      }`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
 
                   {/* Event Banner */}
@@ -680,6 +782,515 @@ export default function EventsPage() {
         </section>
       </div>
 
+      {/* Edit Event Modal */}
+      {showEventModal && editingEvent && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div
+            className={`max-w-4xl w-full max-h-[90vh] overflow-y-auto rounded-3xl border ${
+              theme === "dark"
+                ? "bg-slate-900/95 border-white/20"
+                : "bg-white/95 border-indigo-200"
+            }`}
+          >
+            <div className="p-8">
+              <div className="flex items-center justify-between mb-6">
+                <h2
+                  className={`text-2xl font-bold ${
+                    theme === "dark" ? "text-white" : "text-indigo-900"
+                  }`}
+                >
+                  Edit Event
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowEventModal(false);
+                    setEditingEvent(null);
+                    setEditingEventData({
+                      title: "",
+                      description: "",
+                      category: "Technology",
+                      eventDate: "",
+                      eventStart: "",
+                      eventEnd: "",
+                      registrationDeadline: "",
+                      maxParticipants: "",
+                      tags: "",
+                      bannerImage: "",
+                      hostedBy: "",
+                      eventType: {
+                        type: "Offline",
+                        locationDetails: "",
+                      },
+                    });
+                  }}
+                  className={`p-2 rounded-full hover:scale-110 transition-transform ${
+                    theme === "dark"
+                      ? "text-gray-400 hover:text-white"
+                      : "text-gray-600 hover:text-indigo-900"
+                  }`}
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Basic Information */}
+                <div>
+                  <h3
+                    className={`text-lg font-bold mb-4 ${
+                      theme === "dark" ? "text-white" : "text-indigo-900"
+                    }`}
+                  >
+                    Basic Information
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${
+                          theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                        }`}
+                      >
+                        Event Title *
+                      </label>
+                      <input
+                        type="text"
+                        value={editingEventData.title}
+                        onChange={(e) =>
+                          setEditingEventData({
+                            ...editingEventData,
+                            title: e.target.value,
+                          })
+                        }
+                        className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                        }`}
+                        placeholder="Enter event title"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${
+                          theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                        }`}
+                      >
+                        Category
+                      </label>
+                      <select
+                        value={editingEventData.category}
+                        onChange={(e) =>
+                          setEditingEventData({
+                            ...editingEventData,
+                            category: e.target.value,
+                          })
+                        }
+                        className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                        }`}
+                      >
+                        {categories.slice(1).map((category) => (
+                          <option key={category} value={category}>
+                            {category}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <label
+                      className={`block text-sm font-medium mb-2 ${
+                        theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                      }`}
+                    >
+                      Description *
+                    </label>
+                    <textarea
+                      value={editingEventData.description}
+                      onChange={(e) =>
+                        setEditingEventData({
+                          ...editingEventData,
+                          description: e.target.value,
+                        })
+                      }
+                      rows={3}
+                      className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                        theme === "dark"
+                          ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                          : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                      }`}
+                      placeholder="Enter event description"
+                    />
+                  </div>
+                </div>
+
+                {/* Date and Time Information */}
+                <div>
+                  <h3
+                    className={`text-lg font-bold mb-4 ${
+                      theme === "dark" ? "text-white" : "text-indigo-900"
+                    }`}
+                  >
+                    Date & Time
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${
+                          theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                        }`}
+                      >
+                        Event Date *
+                      </label>
+                      <input
+                        type="date"
+                        value={editingEventData.eventDate}
+                        onChange={(e) =>
+                          setEditingEventData({
+                            ...editingEventData,
+                            eventDate: e.target.value,
+                          })
+                        }
+                        className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                        }`}
+                      />
+                    </div>
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${
+                          theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                        }`}
+                      >
+                        Start Time *
+                      </label>
+                      <input
+                        type="time"
+                        value={editingEventData.eventStart}
+                        onChange={(e) =>
+                          setEditingEventData({
+                            ...editingEventData,
+                            eventStart: e.target.value,
+                          })
+                        }
+                        className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                        }`}
+                      />
+                    </div>
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${
+                          theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                        }`}
+                      >
+                        End Time *
+                      </label>
+                      <input
+                        type="time"
+                        value={editingEventData.eventEnd}
+                        onChange={(e) =>
+                          setEditingEventData({
+                            ...editingEventData,
+                            eventEnd: e.target.value,
+                          })
+                        }
+                        className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                        }`}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Event Type and Location */}
+                <div>
+                  <h3
+                    className={`text-lg font-bold mb-4 ${
+                      theme === "dark" ? "text-white" : "text-indigo-900"
+                    }`}
+                  >
+                    Event Type & Location
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${
+                          theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                        }`}
+                      >
+                        Event Type *
+                      </label>
+                      <select
+                        value={editingEventData.eventType.type}
+                        onChange={(e) =>
+                          setEditingEventData({
+                            ...editingEventData,
+                            eventType: {
+                              ...editingEventData.eventType,
+                              type: e.target.value,
+                            },
+                          })
+                        }
+                        className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                        }`}
+                      >
+                        {eventTypes.map((type) => (
+                          <option key={type} value={type}>
+                            {type}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${
+                          theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                        }`}
+                      >
+                        Location Details *
+                      </label>
+                      <input
+                        type="text"
+                        value={editingEventData.eventType.locationDetails}
+                        onChange={(e) =>
+                          setEditingEventData({
+                            ...editingEventData,
+                            eventType: {
+                              ...editingEventData.eventType,
+                              locationDetails: e.target.value,
+                            },
+                          })
+                        }
+                        className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                        }`}
+                        placeholder={
+                          editingEventData.eventType.type === "Virtual"
+                            ? "Meeting link or platform"
+                            : editingEventData.eventType.type === "Hybrid"
+                            ? "Physical address + Meeting link"
+                            : "Physical address or venue"
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Registration and Participation */}
+                <div>
+                  <h3
+                    className={`text-lg font-bold mb-4 ${
+                      theme === "dark" ? "text-white" : "text-indigo-900"
+                    }`}
+                  >
+                    Registration & Participation
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${
+                          theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                        }`}
+                      >
+                        Registration Deadline
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={editingEventData.registrationDeadline}
+                        onChange={(e) =>
+                          setEditingEventData({
+                            ...editingEventData,
+                            registrationDeadline: e.target.value,
+                          })
+                        }
+                        className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                        }`}
+                      />
+                    </div>
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${
+                          theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                        }`}
+                      >
+                        Max Participants
+                      </label>
+                      <input
+                        type="number"
+                        value={editingEventData.maxParticipants}
+                        onChange={(e) =>
+                          setEditingEventData({
+                            ...editingEventData,
+                            maxParticipants: e.target.value,
+                          })
+                        }
+                        className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                        }`}
+                        placeholder="Leave empty for unlimited"
+                        min="1"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Additional Information */}
+                <div>
+                  <h3
+                    className={`text-lg font-bold mb-4 ${
+                      theme === "dark" ? "text-white" : "text-indigo-900"
+                    }`}
+                  >
+                    Additional Information
+                  </h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${
+                          theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                        }`}
+                      >
+                        Tags
+                      </label>
+                      <input
+                        type="text"
+                        value={editingEventData.tags}
+                        onChange={(e) =>
+                          setEditingEventData({
+                            ...editingEventData,
+                            tags: e.target.value,
+                          })
+                        }
+                        className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                        }`}
+                        placeholder="Enter tags separated by commas (e.g., workshop, networking, tech)"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${
+                          theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                        }`}
+                      >
+                        Banner Image URL
+                      </label>
+                      <input
+                        type="url"
+                        value={editingEventData.bannerImage}
+                        onChange={(e) =>
+                          setEditingEventData({
+                            ...editingEventData,
+                            bannerImage: e.target.value,
+                          })
+                        }
+                        className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                        }`}
+                        placeholder="https://example.com/banner-image.jpg"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${
+                          theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                        }`}
+                      >
+                        Hosted By
+                      </label>
+                      <input
+                        type="text"
+                        value={editingEventData.hostedBy}
+                        onChange={(e) =>
+                          setEditingEventData({
+                            ...editingEventData,
+                            hostedBy: e.target.value,
+                          })
+                        }
+                        className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                        }`}
+                        placeholder="Enter organizer name"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-4 mt-8">
+                <Button
+                  onClick={handleUpdateEvent}
+                  className={`flex-1 py-3 rounded-xl font-bold ${
+                    theme === "dark"
+                      ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
+                      : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+                  }`}
+                >
+                  <Save className="w-5 h-5 mr-2" />
+                  Update Event
+                </Button>
+                <Button
+                  onClick={() => {
+                    setShowEventModal(false);
+                    setEditingEvent(null);
+                    setEditingEventData({
+                      title: "",
+                      description: "",
+                      category: "Technology",
+                      eventDate: "",
+                      eventStart: "",
+                      eventEnd: "",
+                      registrationDeadline: "",
+                      maxParticipants: "",
+                      tags: "",
+                      bannerImage: "",
+                      hostedBy: "",
+                      eventType: {
+                        type: "Offline",
+                        locationDetails: "",
+                      },
+                    });
+                  }}
+                  variant="outline"
+                  className={`px-8 py-3 rounded-xl font-bold border-2 ${
+                    theme === "dark"
+                      ? "border-white/20 text-white hover:bg-white/10"
+                      : "border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                  }`}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Event Details Modal */}
       {showEventDetails && selectedEvent && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -718,7 +1329,6 @@ export default function EventsPage() {
                   </span>
                 </div>
               </div>
-
               <div className="p-8">
                 <h2
                   className={`text-3xl font-bold mb-4 ${
@@ -734,7 +1344,6 @@ export default function EventsPage() {
                 >
                   {selectedEvent.description}
                 </p>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                   <div className="space-y-4">
                     <h3
@@ -853,7 +1462,6 @@ export default function EventsPage() {
                       )}
                     </div>
                   </div>
-
                   <div className="space-y-4">
                     <h3
                       className={`text-xl font-bold ${
@@ -957,7 +1565,6 @@ export default function EventsPage() {
                     </div>
                   </div>
                 </div>
-
                 {selectedEvent.tags && selectedEvent.tags.length > 0 && (
                   <div className="mb-6">
                     <h3
@@ -983,7 +1590,6 @@ export default function EventsPage() {
                     </div>
                   </div>
                 )}
-
                 <div className="flex gap-4">
                   <Button
                     className={`flex-1 py-3 rounded-xl font-bold ${
@@ -991,6 +1597,7 @@ export default function EventsPage() {
                         ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
                         : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
                     }`}
+                    onClick={() => registerForEvent(selectedEvent.id)}
                   >
                     Register Now
                   </Button>

@@ -49,7 +49,8 @@ export default function EventsPage() {
   ];
 
   // API Configuration
-  const API_BASE_URL = process.env.NEXT_PUBLIC_SITE_URL;
+  const API_BASE_URL =
+    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3006/api/event";
 
   // Get auth token from localStorage or your auth context
   const getAuthToken = () => {
@@ -107,7 +108,7 @@ export default function EventsPage() {
       setLoading(true);
       setError(null);
 
-      const response = await apiClient.get("/api/event/get-upcoming-events");
+      const response = await apiClient.get("/get-upcoming-events");
 
       if (response.data && response.data.events) {
         const transformedEvents = response.data.events.map((event) => ({

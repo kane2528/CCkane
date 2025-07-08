@@ -1,40 +1,27 @@
-"use client";
-import { useState, useEffect } from "react";
-import Navbar from "./components/navbar";
-import {
-  Search,
-  Plus,
-  Edit,
-  Trash2,
-  Calendar,
-  Clock,
-  MapPin,
-  Users,
-  User,
-  X,
-  Save,
-  Loader2,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import Image from "next/image";
-import axios from "axios";
-import Cookies from "js-cookie";
+"use client"
+import { useState, useEffect } from "react"
+import Navbar from "./components/navbar"
+import { Search, Plus, Edit, Trash2, Calendar, Clock, MapPin, Users, User, X, Save, Loader2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import Image from "next/image"
+import axios from "axios"
+import Cookies from "js-cookie"
 
 export default function EventsPage() {
-  const [theme, setTheme] = useState("dark");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
-  const [showEventModal, setShowEventModal] = useState(false);
-  const [showEventDetails, setShowEventDetails] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState(null);
-  const [editingEvent, setEditingEvent] = useState(null);
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [theme, setTheme] = useState("dark")
+  const [searchQuery, setSearchQuery] = useState("")
+  const [selectedCategory, setSelectedCategory] = useState("All")
+  const [showEventModal, setShowEventModal] = useState(false)
+  const [showEventDetails, setShowEventDetails] = useState(false)
+  const [selectedEvent, setSelectedEvent] = useState(null)
+  const [editingEvent, setEditingEvent] = useState(null)
+  const [events, setEvents] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark");
-  };
+    setTheme(theme === "dark" ? "light" : "dark")
+  }
 
   const categories = [
     "All",
@@ -46,18 +33,18 @@ export default function EventsPage() {
     "Networking",
     "Sports",
     "Cultural",
-  ];
+  ]
 
   // API Configuration
-  const API_BASE_URL = process.env.NEXT_PUBLIC_SITE_URL;
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3006/api/event"
 
   // Get auth token from localStorage or your auth context
   const getAuthToken = () => {
     if (typeof window !== "undefined") {
-      return Cookies.get("token");
+      return Cookies.get("token")
     }
-    return null;
-  };
+    return null
+  }
 
   // Axios instance with auth header
   const apiClient = axios.create({
@@ -65,59 +52,55 @@ export default function EventsPage() {
     headers: {
       "Content-Type": "application/json",
     },
-  });
+  })
 
   // Add auth token to requests
   apiClient.interceptors.request.use((config) => {
-    const token = getAuthToken();
+    const token = getAuthToken()
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers.Authorization = `Bearer ${token}`
     }
-    return config;
-  });
+    return config
+  })
 
   // Helper function to safely extract string values
   const safeString = (value) => {
-    if (typeof value === "string") return value;
+    if (typeof value === "string") return value
     if (typeof value === "object" && value !== null) {
       // Handle location object
-      if (value.locationDetails) return value.locationDetails;
-      if (value.type && value.locationDetails)
-        return `${value.type}: ${value.locationDetails}`;
+      if (value.locationDetails) return value.locationDetails
+      if (value.type && value.locationDetails) return `${value.type}: ${value.locationDetails}`
       // Handle other object types
-      if (value.name) return value.name;
-      if (value.title) return value.title;
+      if (value.name) return value.name
+      if (value.title) return value.title
       // Convert object to string as fallback
-      return JSON.stringify(value);
+      return JSON.stringify(value)
     }
-    return value ? String(value) : "";
-  };
+    return value ? String(value) : ""
+  }
 
   // Helper function to safely extract array values
   const safeArray = (value) => {
-    if (Array.isArray(value)) return value;
-    if (typeof value === "string")
-      return value.split(",").map((item) => item.trim());
-    return [];
-  };
+    if (Array.isArray(value)) return value
+    if (typeof value === "string") return value.split(",").map((item) => item.trim())
+    return []
+  }
 
   // Fetch events from API
   const fetchEvents = async () => {
     try {
       setLoading(true);
       setError(null);
-
-      const response = await apiClient.get("/api/event/get-upcoming-events");
-
+  
+      const response = await apiClient.get("/get-upcoming-events");
+  
       if (response.data && response.data.events) {
         const transformedEvents = response.data.events.map((event) => ({
           id: event._id,
           type: safeString(event.eventType?.type) || "General",
           name: safeString(event.title),
           description: safeString(event.description),
-          date: event.eventDate
-            ? new Date(event.eventDate).toISOString().split("T")[0]
-            : "",
+          date: event.eventDate ? new Date(event.eventDate).toISOString().split("T")[0] : "",
           time:
             event.eventStart && event.eventEnd
               ? `${new Date(event.eventStart).toLocaleTimeString([], {
@@ -128,9 +111,7 @@ export default function EventsPage() {
                   minute: "2-digit",
                 })}`
               : "TBD",
-          location: safeString(
-            event.eventType?.locationDetails || event.locationDetails
-          ),
+          location: safeString(event.eventType?.locationDetails || event.locationDetails),
           attendees: event.participants?.length || 0,
           maxParticipants: event.maxParticipants || 0,
           organizer: safeString(event.organiser?.name) || "Unknown Organizer",
@@ -140,9 +121,7 @@ export default function EventsPage() {
           registrationEnd: event.registrationDeadline
             ? new Date(event.registrationDeadline).toISOString().split("T")[0]
             : "",
-          banner:
-            safeString(event.bannerImage) ||
-            "/placeholder.svg?height=200&width=400",
+          banner: safeString(event.bannerImage) || "/placeholder.svg?height=200&width=400",
           tags: safeArray(event.tags),
           contact: safeString(event.organiser?.head?.email),
           fee: event.registrationFee ? `₹${event.registrationFee}` : "Free",
@@ -150,21 +129,20 @@ export default function EventsPage() {
           eventMode: safeString(event.eventType?.type),
           eventCategory: safeString(event.category),
         }));
-
+  
         setEvents(transformedEvents);
       }
     } catch (err) {
       console.error("Error fetching events:", err);
       setError(err.response?.data?.message || "Failed to fetch events");
-
+  
       // Optional fallback
       setEvents([
         {
           id: 1,
           type: "Technology",
           name: "AI & Machine Learning Summit",
-          description:
-            "Join industry experts for a comprehensive discussion on the latest AI trends.",
+          description: "Join industry experts for a comprehensive discussion on the latest AI trends.",
           date: "2025-07-10",
           time: "10:00 AM - 01:00 PM",
           location: "IIT Delhi, New Delhi",
@@ -190,11 +168,12 @@ export default function EventsPage() {
       setLoading(false);
     }
   };
+  
 
   // Load events on component mount
   useEffect(() => {
-    fetchEvents();
-  }, []);
+    fetchEvents()
+  }, [])
 
   const [newEvent, setNewEvent] = useState({
     type: "Technology",
@@ -211,54 +190,43 @@ export default function EventsPage() {
     requirements: "",
     contact: "",
     fee: "",
-  });
+  })
 
   // Filter events based on search and category
   const filteredEvents = events.filter((event) => {
-    const searchableText = [
-      event.name,
-      event.description,
-      event.organizer,
-      event.location,
-    ]
-      .join(" ")
-      .toLowerCase();
+    const searchableText = [event.name, event.description, event.organizer, event.location].join(" ").toLowerCase()
 
-    const matchesSearch = searchableText.includes(searchQuery.toLowerCase());
-    const matchesCategory =
-      selectedCategory === "All" || event.type === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+    const matchesSearch = searchableText.includes(searchQuery.toLowerCase())
+    const matchesCategory = selectedCategory === "All" || event.type === selectedCategory
+    return matchesSearch && matchesCategory
+  })
 
   const handleAddEvent = async () => {
     if (newEvent.name && newEvent.description && newEvent.date) {
       try {
         // Prepare data for API
         const eventData = {
-          title: newEvent.name,
-          description: newEvent.description,
-          category: newEvent.category,
-          eventDate: newEvent.date,
-          eventStart: newEvent.time?.start,
-          eventEnd: newEvent.time?.end,
-          eventType: {
-            type: newEvent.type,
-            locationDetails: newEvent.location,
-          },
-          registrationDeadline: newEvent.registrationEnd,
-          maxParticipants: Number.parseInt(newEvent.maxParticipants) || 0,
-          tags: newEvent.tags.split(",").map((tag) => tag.trim()),
-          bannerImage: newEvent.bannerImage || "", // If you support image upload later
-        };
+            title: newEvent.name,
+            description: newEvent.description,
+            category: newEvent.category,
+            eventDate: newEvent.date,
+            eventStart: newEvent.time?.start,
+            eventEnd: newEvent.time?.end,
+            eventType: {
+              type: newEvent.type,
+              locationDetails: newEvent.location
+            },
+            registrationDeadline: newEvent.registrationEnd,
+            maxParticipants: Number.parseInt(newEvent.maxParticipants) || 0,
+            tags: newEvent.tags.split(",").map(tag => tag.trim()),
+            bannerImage: newEvent.bannerImage || "", // If you support image upload later
+          };
 
         // Make API call to create event
-        const response = await apiClient.post(
-          `/add-event/${organisationId}`,
-          eventData
-        );
+        const response = await apiClient.post(`/add-event/${organisationId}`, eventData)
         if (response.data) {
           // Refresh events list
-          await fetchEvents();
+          await fetchEvents()
           // Reset form
           setNewEvent({
             type: "Technology",
@@ -275,23 +243,23 @@ export default function EventsPage() {
             requirements: "",
             contact: "",
             fee: "",
-          });
-          setShowEventModal(false);
+          })
+          setShowEventModal(false)
         }
       } catch (err) {
-        console.error("Error creating event:", err);
-        setError(err.response?.data?.message || "Failed to create event");
+        console.error("Error creating event:", err)
+        setError(err.response?.data?.message || "Failed to create event")
       }
     }
-  };
+  }
 
   const handleEditEvent = (event) => {
     setEditingEvent({
       ...event,
       tags: Array.isArray(event.tags) ? event.tags.join(", ") : "",
-    });
-    setShowEventModal(true);
-  };
+    })
+    setShowEventModal(true)
+  }
 
   const handleUpdateEvent = async () => {
     if (editingEvent.name && editingEvent.description && editingEvent.date) {
@@ -311,48 +279,43 @@ export default function EventsPage() {
           requirements: editingEvent.requirements,
           contactEmail: editingEvent.contact,
           registrationFee:
-            editingEvent.fee === "Free"
-              ? 0
-              : Number.parseFloat(editingEvent.fee.replace(/[^\d.]/g, "")) || 0,
-        };
+            editingEvent.fee === "Free" ? 0 : Number.parseFloat(editingEvent.fee.replace(/[^\d.]/g, "")) || 0,
+        }
 
         // Make API call to update event
-        const response = await apiClient.put(
-          `/update-event/${editingEvent.id}`,
-          eventData
-        );
+        const response = await apiClient.put(`/update-event/${editingEvent.id}`, eventData)
         if (response.data) {
           // Refresh events list
-          await fetchEvents();
-          setEditingEvent(null);
-          setShowEventModal(false);
+          await fetchEvents()
+          setEditingEvent(null)
+          setShowEventModal(false)
         }
       } catch (err) {
-        console.error("Error updating event:", err);
-        setError(err.response?.data?.message || "Failed to update event");
+        console.error("Error updating event:", err)
+        setError(err.response?.data?.message || "Failed to update event")
       }
     }
-  };
+  }
 
   const handleDeleteEvent = async (eventId) => {
     if (window.confirm("Are you sure you want to delete this event?")) {
       try {
-        await apiClient.delete(`/delete-event/${eventId}`);
+        await apiClient.delete(`/delete-event/${eventId}`)
         // Refresh events list
-        await fetchEvents();
+        await fetchEvents()
       } catch (err) {
-        console.error("Error deleting event:", err);
-        setError(err.response?.data?.message || "Failed to delete event");
+        console.error("Error deleting event:", err)
+        setError(err.response?.data?.message || "Failed to delete event")
       }
     }
-  };
+  }
 
   const openEventDetails = (event) => {
-    setSelectedEvent(event);
-    setShowEventDetails(true);
-  };
+    setSelectedEvent(event)
+    setShowEventDetails(true)
+  }
 
-  const currentEvent = editingEvent || newEvent;
+  const currentEvent = editingEvent || newEvent
 
   // Loading state
   if (loading) {
@@ -372,17 +335,11 @@ export default function EventsPage() {
                 theme === "dark" ? "text-purple-400" : "text-indigo-600"
               }`}
             />
-            <p
-              className={`text-lg ${
-                theme === "dark" ? "text-gray-300" : "text-indigo-700"
-              }`}
-            >
-              Loading events...
-            </p>
+            <p className={`text-lg ${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}>Loading events...</p>
           </div>
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -415,13 +372,8 @@ export default function EventsPage() {
                   Amazing Events
                 </span>
               </h1>
-              <p
-                className={`text-xl max-w-2xl mx-auto ${
-                  theme === "dark" ? "text-gray-300" : "text-indigo-700"
-                }`}
-              >
-                Find and join events that match your interests, or create your
-                own
+              <p className={`text-xl max-w-2xl mx-auto ${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}>
+                Find and join events that match your interests, or create your own
               </p>
             </div>
 
@@ -435,10 +387,7 @@ export default function EventsPage() {
                 }`}
               >
                 <p className="font-medium">Error: {error}</p>
-                <button
-                  onClick={fetchEvents}
-                  className="mt-2 text-sm underline hover:no-underline"
-                >
+                <button onClick={fetchEvents} className="mt-2 text-sm underline hover:no-underline">
                   Try again
                 </button>
               </div>
@@ -479,8 +428,8 @@ export default function EventsPage() {
                           ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white"
                           : "bg-gradient-to-r from-indigo-600 to-purple-600 text-white"
                         : theme === "dark"
-                        ? "bg-white/10 text-gray-300 hover:bg-white/20"
-                        : "bg-white/80 text-indigo-700 hover:bg-white border border-indigo-200"
+                          ? "bg-white/10 text-gray-300 hover:bg-white/20"
+                          : "bg-white/80 text-indigo-700 hover:bg-white border border-indigo-200"
                     }`}
                   >
                     {category}
@@ -504,14 +453,10 @@ export default function EventsPage() {
                   <div className="absolute top-4 left-4 z-10">
                     <span
                       className={`px-3 py-1 rounded-full text-sm font-bold ${
-                        theme === "dark"
-                          ? "bg-purple-900/80 text-purple-300"
-                          : "bg-indigo-100 text-indigo-700"
+                        theme === "dark" ? "bg-purple-900/80 text-purple-300" : "bg-indigo-100 text-indigo-700"
                       }`}
                     >
-                      {Array.isArray(event.tags)
-                        ? event.tags.join(", ")
-                        : event.tags}
+                      {Array.isArray(event.tags) ? event.tags.join(", ") : event.tags}
                     </span>
                   </div>
 
@@ -528,110 +473,42 @@ export default function EventsPage() {
 
                   {/* Event Content */}
                   <div className="p-6">
-                    <h3
-                      className={`text-xl font-bold mb-3 ${
-                        theme === "dark" ? "text-white" : "text-indigo-900"
-                      }`}
-                    >
+                    <h3 className={`text-xl font-bold mb-3 ${theme === "dark" ? "text-white" : "text-indigo-900"}`}>
                       {event.name}
                     </h3>
                     <p
-                      className={`text-sm mb-4 line-clamp-2 ${
-                        theme === "dark" ? "text-gray-300" : "text-indigo-700"
-                      }`}
+                      className={`text-sm mb-4 line-clamp-2 ${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}
                     >
                       {event.description}
                     </p>
                     <div className="space-y-2 mb-4">
                       <div className="flex items-center gap-2">
-                        <Calendar
-                          className={`w-4 h-4 ${
-                            theme === "dark"
-                              ? "text-purple-400"
-                              : "text-indigo-600"
-                          }`}
-                        />
-                        <span
-                          className={`text-sm ${
-                            theme === "dark"
-                              ? "text-gray-300"
-                              : "text-indigo-700"
-                          }`}
-                        >
-                          {event.date
-                            ? new Date(event.date).toLocaleDateString()
-                            : "Date TBD"}
+                        <Calendar className={`w-4 h-4 ${theme === "dark" ? "text-purple-400" : "text-indigo-600"}`} />
+                        <span className={`text-sm ${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}>
+                          {event.date ? new Date(event.date).toLocaleDateString() : "Date TBD"}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Clock
-                          className={`w-4 h-4 ${
-                            theme === "dark"
-                              ? "text-purple-400"
-                              : "text-indigo-600"
-                          }`}
-                        />
-                        <span
-                          className={`text-sm ${
-                            theme === "dark"
-                              ? "text-gray-300"
-                              : "text-indigo-700"
-                          }`}
-                        >
+                        <Clock className={`w-4 h-4 ${theme === "dark" ? "text-purple-400" : "text-indigo-600"}`} />
+                        <span className={`text-sm ${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}>
                           {event.time || "Time TBD"}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <MapPin
-                          className={`w-4 h-4 ${
-                            theme === "dark"
-                              ? "text-purple-400"
-                              : "text-indigo-600"
-                          }`}
-                        />
-                        <span
-                          className={`text-sm ${
-                            theme === "dark"
-                              ? "text-gray-300"
-                              : "text-indigo-700"
-                          }`}
-                        >
+                        <MapPin className={`w-4 h-4 ${theme === "dark" ? "text-purple-400" : "text-indigo-600"}`} />
+                        <span className={`text-sm ${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}>
                           {event.location || "Location TBD"}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Users
-                          className={`w-4 h-4 ${
-                            theme === "dark"
-                              ? "text-purple-400"
-                              : "text-indigo-600"
-                          }`}
-                        />
-                        <span
-                          className={`text-sm ${
-                            theme === "dark"
-                              ? "text-gray-300"
-                              : "text-indigo-700"
-                          }`}
-                        >
+                        <Users className={`w-4 h-4 ${theme === "dark" ? "text-purple-400" : "text-indigo-600"}`} />
+                        <span className={`text-sm ${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}>
                           {event.attendees} / {event.maxParticipants} attendees
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <User
-                          className={`w-4 h-4 ${
-                            theme === "dark"
-                              ? "text-purple-400"
-                              : "text-indigo-600"
-                          }`}
-                        />
-                        <span
-                          className={`text-sm ${
-                            theme === "dark"
-                              ? "text-gray-300"
-                              : "text-indigo-700"
-                          }`}
-                        >
+                        <User className={`w-4 h-4 ${theme === "dark" ? "text-purple-400" : "text-indigo-600"}`} />
+                        <span className={`text-sm ${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}>
                           Hosted by {event.organizer}
                         </span>
                       </div>
@@ -653,25 +530,11 @@ export default function EventsPage() {
 
             {filteredEvents.length === 0 && !loading && (
               <div className="text-center py-12">
-                <div
-                  className={`text-6xl mb-4 ${
-                    theme === "dark" ? "text-gray-600" : "text-gray-400"
-                  }`}
-                >
-                  🔍
-                </div>
-                <h3
-                  className={`text-2xl font-bold mb-2 ${
-                    theme === "dark" ? "text-gray-400" : "text-gray-600"
-                  }`}
-                >
+                <div className={`text-6xl mb-4 ${theme === "dark" ? "text-gray-600" : "text-gray-400"}`}>🔍</div>
+                <h3 className={`text-2xl font-bold mb-2 ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
                   No events found
                 </h3>
-                <p
-                  className={`text-lg ${
-                    theme === "dark" ? "text-gray-500" : "text-gray-500"
-                  }`}
-                >
+                <p className={`text-lg ${theme === "dark" ? "text-gray-500" : "text-gray-500"}`}>
                   Try adjusting your search terms or browse different categories
                 </p>
               </div>
@@ -685,9 +548,7 @@ export default function EventsPage() {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div
             className={`max-w-4xl w-full max-h-[90vh] overflow-y-auto rounded-3xl border ${
-              theme === "dark"
-                ? "bg-slate-900/95 border-white/20"
-                : "bg-white/95 border-indigo-200"
+              theme === "dark" ? "bg-slate-900/95 border-white/20" : "bg-white/95 border-indigo-200"
             }`}
           >
             <div className="relative">
@@ -709,9 +570,7 @@ export default function EventsPage() {
                 <div className="absolute bottom-4 left-4">
                   <span
                     className={`px-3 py-1 rounded-full text-sm font-bold ${
-                      theme === "dark"
-                        ? "bg-purple-900/80 text-purple-300"
-                        : "bg-indigo-100 text-indigo-700"
+                      theme === "dark" ? "bg-purple-900/80 text-purple-300" : "bg-indigo-100 text-indigo-700"
                     }`}
                   >
                     {selectedEvent.type}
@@ -720,133 +579,52 @@ export default function EventsPage() {
               </div>
 
               <div className="p-8">
-                <h2
-                  className={`text-3xl font-bold mb-4 ${
-                    theme === "dark" ? "text-white" : "text-indigo-900"
-                  }`}
-                >
+                <h2 className={`text-3xl font-bold mb-4 ${theme === "dark" ? "text-white" : "text-indigo-900"}`}>
                   {selectedEvent.name}
                 </h2>
-                <p
-                  className={`text-lg mb-6 ${
-                    theme === "dark" ? "text-gray-300" : "text-indigo-700"
-                  }`}
-                >
+                <p className={`text-lg mb-6 ${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}>
                   {selectedEvent.description}
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                   <div className="space-y-4">
-                    <h3
-                      className={`text-xl font-bold ${
-                        theme === "dark" ? "text-white" : "text-indigo-900"
-                      }`}
-                    >
+                    <h3 className={`text-xl font-bold ${theme === "dark" ? "text-white" : "text-indigo-900"}`}>
                       Event Details
                     </h3>
                     <div className="space-y-3">
                       <div className="flex items-center gap-3">
-                        <Calendar
-                          className={`w-5 h-5 ${
-                            theme === "dark"
-                              ? "text-purple-400"
-                              : "text-indigo-600"
-                          }`}
-                        />
-                        <span
-                          className={`${
-                            theme === "dark"
-                              ? "text-gray-300"
-                              : "text-indigo-700"
-                          }`}
-                        >
-                          {selectedEvent.date
-                            ? new Date(selectedEvent.date).toLocaleDateString()
-                            : "Date TBD"}
+                        <Calendar className={`w-5 h-5 ${theme === "dark" ? "text-purple-400" : "text-indigo-600"}`} />
+                        <span className={`${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}>
+                          {selectedEvent.date ? new Date(selectedEvent.date).toLocaleDateString() : "Date TBD"}
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <Clock
-                          className={`w-5 h-5 ${
-                            theme === "dark"
-                              ? "text-purple-400"
-                              : "text-indigo-600"
-                          }`}
-                        />
-                        <span
-                          className={`${
-                            theme === "dark"
-                              ? "text-gray-300"
-                              : "text-indigo-700"
-                          }`}
-                        >
+                        <Clock className={`w-5 h-5 ${theme === "dark" ? "text-purple-400" : "text-indigo-600"}`} />
+                        <span className={`${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}>
                           {selectedEvent.time || "Time TBD"}
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <MapPin
-                          className={`w-5 h-5 ${
-                            theme === "dark"
-                              ? "text-purple-400"
-                              : "text-indigo-600"
-                          }`}
-                        />
-                        <span
-                          className={`${
-                            theme === "dark"
-                              ? "text-gray-300"
-                              : "text-indigo-700"
-                          }`}
-                        >
+                        <MapPin className={`w-5 h-5 ${theme === "dark" ? "text-purple-400" : "text-indigo-600"}`} />
+                        <span className={`${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}>
                           {selectedEvent.location || "Location TBD"}
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <Users
-                          className={`w-5 h-5 ${
-                            theme === "dark"
-                              ? "text-purple-400"
-                              : "text-indigo-600"
-                          }`}
-                        />
-                        <span
-                          className={`${
-                            theme === "dark"
-                              ? "text-gray-300"
-                              : "text-indigo-700"
-                          }`}
-                        >
-                          {selectedEvent.attendees} /{" "}
-                          {selectedEvent.maxParticipants} attendees
+                        <Users className={`w-5 h-5 ${theme === "dark" ? "text-purple-400" : "text-indigo-600"}`} />
+                        <span className={`${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}>
+                          {selectedEvent.attendees} / {selectedEvent.maxParticipants} attendees
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <User
-                          className={`w-5 h-5 ${
-                            theme === "dark"
-                              ? "text-purple-400"
-                              : "text-indigo-600"
-                          }`}
-                        />
-                        <span
-                          className={`${
-                            theme === "dark"
-                              ? "text-gray-300"
-                              : "text-indigo-700"
-                          }`}
-                        >
+                        <User className={`w-5 h-5 ${theme === "dark" ? "text-purple-400" : "text-indigo-600"}`} />
+                        <span className={`${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}>
                           Hosted by {selectedEvent.organizer}
                         </span>
                       </div>
                       {selectedEvent.organizerHead && (
                         <div className="ml-8">
-                          <span
-                            className={`text-sm ${
-                              theme === "dark"
-                                ? "text-gray-400"
-                                : "text-indigo-600"
-                            }`}
-                          >
+                          <span className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-indigo-600"}`}>
                             Contact: {selectedEvent.organizerHead}
                           </span>
                         </div>
@@ -855,102 +633,53 @@ export default function EventsPage() {
                   </div>
 
                   <div className="space-y-4">
-                    <h3
-                      className={`text-xl font-bold ${
-                        theme === "dark" ? "text-white" : "text-indigo-900"
-                      }`}
-                    >
+                    <h3 className={`text-xl font-bold ${theme === "dark" ? "text-white" : "text-indigo-900"}`}>
                       Registration Info
                     </h3>
                     <div className="space-y-3">
                       <div>
                         <span
-                          className={`text-sm font-medium ${
-                            theme === "dark"
-                              ? "text-gray-400"
-                              : "text-indigo-600"
-                          }`}
+                          className={`text-sm font-medium ${theme === "dark" ? "text-gray-400" : "text-indigo-600"}`}
                         >
                           Registration Period
                         </span>
-                        <p
-                          className={`${
-                            theme === "dark"
-                              ? "text-gray-300"
-                              : "text-indigo-700"
-                          }`}
-                        >
+                        <p className={`${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}>
                           {selectedEvent.registrationStart
-                            ? new Date(
-                                selectedEvent.registrationStart
-                              ).toLocaleDateString()
+                            ? new Date(selectedEvent.registrationStart).toLocaleDateString()
                             : "TBD"}{" "}
                           to{" "}
                           {selectedEvent.registrationEnd
-                            ? new Date(
-                                selectedEvent.registrationEnd
-                              ).toLocaleDateString()
+                            ? new Date(selectedEvent.registrationEnd).toLocaleDateString()
                             : "TBD"}
                         </p>
                       </div>
                       <div>
                         <span
-                          className={`text-sm font-medium ${
-                            theme === "dark"
-                              ? "text-gray-400"
-                              : "text-indigo-600"
-                          }`}
+                          className={`text-sm font-medium ${theme === "dark" ? "text-gray-400" : "text-indigo-600"}`}
                         >
                           Registration Fee
                         </span>
-                        <p
-                          className={`${
-                            theme === "dark"
-                              ? "text-gray-300"
-                              : "text-indigo-700"
-                          }`}
-                        >
+                        <p className={`${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}>
                           {selectedEvent.fee}
                         </p>
                       </div>
                       <div>
                         <span
-                          className={`text-sm font-medium ${
-                            theme === "dark"
-                              ? "text-gray-400"
-                              : "text-indigo-600"
-                          }`}
+                          className={`text-sm font-medium ${theme === "dark" ? "text-gray-400" : "text-indigo-600"}`}
                         >
                           Requirements
                         </span>
-                        <p
-                          className={`${
-                            theme === "dark"
-                              ? "text-gray-300"
-                              : "text-indigo-700"
-                          }`}
-                        >
-                          {selectedEvent.requirements ||
-                            "No specific requirements"}
+                        <p className={`${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}>
+                          {selectedEvent.requirements || "No specific requirements"}
                         </p>
                       </div>
                       <div>
                         <span
-                          className={`text-sm font-medium ${
-                            theme === "dark"
-                              ? "text-gray-400"
-                              : "text-indigo-600"
-                          }`}
+                          className={`text-sm font-medium ${theme === "dark" ? "text-gray-400" : "text-indigo-600"}`}
                         >
                           Contact
                         </span>
-                        <p
-                          className={`${
-                            theme === "dark"
-                              ? "text-gray-300"
-                              : "text-indigo-700"
-                          }`}
-                        >
+                        <p className={`${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}>
                           {selectedEvent.contact}
                         </p>
                       </div>
@@ -960,11 +689,7 @@ export default function EventsPage() {
 
                 {selectedEvent.tags && selectedEvent.tags.length > 0 && (
                   <div className="mb-6">
-                    <h3
-                      className={`text-lg font-bold mb-3 ${
-                        theme === "dark" ? "text-white" : "text-indigo-900"
-                      }`}
-                    >
+                    <h3 className={`text-lg font-bold mb-3 ${theme === "dark" ? "text-white" : "text-indigo-900"}`}>
                       Tags
                     </h3>
                     <div className="flex flex-wrap gap-2">
@@ -972,9 +697,7 @@ export default function EventsPage() {
                         <span
                           key={index}
                           className={`px-3 py-1 rounded-full text-sm font-medium ${
-                            theme === "dark"
-                              ? "bg-purple-900/50 text-purple-300"
-                              : "bg-indigo-100 text-indigo-700"
+                            theme === "dark" ? "bg-purple-900/50 text-purple-300" : "bg-indigo-100 text-indigo-700"
                           }`}
                         >
                           {tag}
@@ -1012,5 +735,5 @@ export default function EventsPage() {
         </div>
       )}
     </div>
-  );
+  )
 }

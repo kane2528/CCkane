@@ -39,7 +39,6 @@ import {
 import toast from "react-hot-toast";
 import Cookies from "js-cookie";
 import axios from "axios";
-import CreatePostModal from "./components/createmodal";
 
 const Discussions = () => {
   const [theme, setTheme] = useState("dark");
@@ -63,7 +62,6 @@ const Discussions = () => {
   const [newComment, setNewComment] = useState("");
   const [communities, setCommunities] = useState([]);
   const [userCommunities, setUserCommunities] = useState([]);
-  const [userCommunitiesID, setUserCommunitiesID] = useState([]);
   const [discussions, setDiscussions] = useState([]);
   const [savedPosts, setSavedPosts] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -241,8 +239,6 @@ const Discussions = () => {
 
         setCommunities(allRes.data.communities);
         setUserCommunities(userRes.data.communities);
-        setUserCommunitiesID(userRes.data.communities.map((c) => c._id));
-        console.log("User Communities ID:", userCommunitiesID);
         setSavedPosts(savedRes);
 
         // Load initial discussions from first community
@@ -807,26 +803,8 @@ const Discussions = () => {
 
   const handleAddComment = async (discussionId) => {
     if (newComment.trim()) {
-      try {
-        const token = localStorage.getItem('token'); // Get token from storage
-        const response = await axios.post(
-          `${process.env.NEXT_PUBLIC_SITE_URL}/api/comment/add-comment/${discussionId}`,
-          { text: newComment },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        console.log("Comment added:", response.data.comment);
-        setNewComment("");
-        // Optional: refresh comment list or show success message
-
-      } catch (error) {
-        console.error("Failed to add comment:", error);
-        // Optional: show error toast or UI message
-      }
+      await commentOnPost(discussionId, newComment);
+      setNewComment("");
     }
   };
   const handleReplyToComment = async (commentId) => {
@@ -858,7 +836,10 @@ const Discussions = () => {
             (c) => c._id === commentId
           );
           if (parentComment) {
-            parentComment.replies = [...(parentComment.replies || []), newReply];
+            parentComment.replies = [
+              ...(parentComment.replies || []),
+              newReply,
+            ];
           }
 
           return { ...prev };
@@ -871,56 +852,58 @@ const Discussions = () => {
   };
 
   const handleDeleteComment = async (commentId, postId) => {
-    toast((t) => (
-      <span className="flex items-center gap-3">
-        Are you sure?
-        <div className="flex gap-2">
-          <button
-            className="text-red-500 hover:underline"
-            onClick={async () => {
-              toast.dismiss(t.id);
-              const loadingId = toast.loading("Deleting comment...");
+    toast(
+      (t) => (
+        <span className="flex items-center gap-3">
+          Are you sure?
+          <div className="flex gap-2">
+            <button
+              className="text-red-500 hover:underline"
+              onClick={async () => {
+                toast.dismiss(t.id);
+                const loadingId = toast.loading("Deleting comment...");
 
-              try {
-                const token = localStorage.getItem('token'); // 🔐 Get auth token
+                try {
+                  const token = localStorage.getItem("token"); // 🔐 Get auth token
 
-                // ✅ Direct API call to delete the comment
-                const response = await axios.delete(
-                  `${process.env.NEXT_PUBLIC_SITE_URL}/api/comment/delete-comment/${commentId}`,
-                  {
-                    headers: {
-                      Authorization: `Bearer ${token}`,
-                    },
-                  }
-                );
+                  // ✅ Direct API call to delete the comment
+                  const response = await axios.delete(
+                    `${process.env.NEXT_PUBLIC_SITE_URL}/api/comment/delete-comment/${commentId}`,
+                    {
+                      headers: {
+                        Authorization: `Bearer ${token}`,
+                      },
+                    }
+                  );
 
-                toast.success("Comment deleted successfully", {
-                  id: loadingId,
-                });
+                  toast.success("Comment deleted successfully", {
+                    id: loadingId,
+                  });
 
-                // ✅ Optional: update local comment list
-                setComments((prev) => ({
-                  ...prev,
-                  [postId]: prev[postId].filter((c) => c._id !== commentId),
-                }));
-
-              } catch (error) {
-                toast.error("Failed to delete comment", { id: loadingId });
-                console.error("Error deleting comment:", error);
-              }
-            }}
-          >
-            Yes
-          </button>
-          <button
-            className="text-gray-500 hover:underline"
-            onClick={() => toast.dismiss(t.id)}
-          >
-            Cancel
-          </button>
-        </div>
-      </span>
-    ), { duration: 10000 });
+                  // ✅ Optional: update local comment list
+                  setComments((prev) => ({
+                    ...prev,
+                    [postId]: prev[postId].filter((c) => c._id !== commentId),
+                  }));
+                } catch (error) {
+                  toast.error("Failed to delete comment", { id: loadingId });
+                  console.error("Error deleting comment:", error);
+                }
+              }}
+            >
+              Yes
+            </button>
+            <button
+              className="text-gray-500 hover:underline"
+              onClick={() => toast.dismiss(t.id)}
+            >
+              Cancel
+            </button>
+          </div>
+        </span>
+      ),
+      { duration: 10000 }
+    );
   };
 
   const loadMorePosts = async () => {
@@ -937,10 +920,11 @@ const Discussions = () => {
 
     return (
       <div
-        className={`group relative backdrop-blur-xl rounded-3xl p-8 border transition-all duration-500 hover:scale-105 hover:shadow-2xl cursor-pointer overflow-hidden ${theme === "dark"
-          ? "bg-gradient-to-br from-white/10 to-white/5 border-white/20 hover:bg-gradient-to-br hover:from-white/15 hover:to-white/10"
-          : "bg-gradient-to-br from-white to-gray-50 border-indigo-200 hover:bg-gradient-to-br hover:from-indigo-50 hover:to-purple-50"
-          }`}
+        className={`group relative backdrop-blur-xl rounded-3xl p-8 border transition-all duration-500 hover:scale-105 hover:shadow-2xl cursor-pointer overflow-hidden ${
+          theme === "dark"
+            ? "bg-gradient-to-br from-white/10 to-white/5 border-white/20 hover:bg-gradient-to-br hover:from-white/15 hover:to-white/10"
+            : "bg-gradient-to-br from-white to-gray-50 border-indigo-200 hover:bg-gradient-to-br hover:from-indigo-50 hover:to-purple-50"
+        }`}
       >
         <div className="flex items-start justify-between mb-6 relative z-10">
           <div className="flex items-center gap-4">
@@ -953,14 +937,16 @@ const Discussions = () => {
             </div>
             <div>
               <h3
-                className={`font-bold text-xl ${theme === "dark" ? "text-white" : "text-indigo-900"
-                  }`}
+                className={`font-bold text-xl ${
+                  theme === "dark" ? "text-white" : "text-indigo-900"
+                }`}
               >
                 {community.name}
               </h3>
               <p
-                className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-indigo-600"
-                  }`}
+                className={`text-sm ${
+                  theme === "dark" ? "text-gray-400" : "text-indigo-600"
+                }`}
               >
                 {community.members?.length || 0} members
               </p>
@@ -969,8 +955,9 @@ const Discussions = () => {
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
             <span
-              className={`text-xs font-medium ${theme === "dark" ? "text-green-400" : "text-green-600"
-                }`}
+              className={`text-xs font-medium ${
+                theme === "dark" ? "text-green-400" : "text-green-600"
+              }`}
             >
               Active
             </span>
@@ -978,18 +965,20 @@ const Discussions = () => {
         </div>
 
         <p
-          className={`text-sm mb-6 ${theme === "dark" ? "text-gray-300" : "text-indigo-700"
-            }`}
+          className={`text-sm mb-6 ${
+            theme === "dark" ? "text-gray-300" : "text-indigo-700"
+          }`}
         >
           {community.description || "No description available"}
         </p>
 
         {isUserInCommunity ? (
           <button
-            className={`w-full py-4 rounded-2xl font-bold transition-all duration-300 hover:scale-105 transform hover:shadow-xl ${theme === "dark"
-              ? "bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white"
-              : "bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white"
-              }`}
+            className={`w-full py-4 rounded-2xl font-bold transition-all duration-300 hover:scale-105 transform hover:shadow-xl ${
+              theme === "dark"
+                ? "bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white"
+                : "bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white"
+            }`}
             onClick={async () => {
               setViewedCommunity(community);
               await getCommunityPosts(community._id);
@@ -1002,10 +991,11 @@ const Discussions = () => {
           </button>
         ) : (
           <button
-            className={`w-full py-4 rounded-2xl font-bold transition-all duration-300 hover:scale-105 transform hover:shadow-xl ${theme === "dark"
-              ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
-              : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
-              }`}
+            className={`w-full py-4 rounded-2xl font-bold transition-all duration-300 hover:scale-105 transform hover:shadow-xl ${
+              theme === "dark"
+                ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
+                : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+            }`}
             onClick={() => handleJoinCommunity(community._id)}
           >
             <span className="flex items-center justify-center gap-2">
@@ -1026,19 +1016,21 @@ const Discussions = () => {
 
     return (
       <div
-        className={`group backdrop-blur-xl rounded-3xl p-8 border transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 overflow-hidden relative ${theme === "dark"
-          ? "bg-gradient-to-br from-white/10 to-white/5 border-white/20 hover:bg-gradient-to-br hover:from-white/15 hover:to-white/10"
-          : "bg-gradient-to-br from-white to-gray-50 border-indigo-200 hover:bg-gradient-to-br hover:from-indigo-50 hover:to-purple-50"
-          }`}
+        className={`group backdrop-blur-xl rounded-3xl p-8 border transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 overflow-hidden relative ${
+          theme === "dark"
+            ? "bg-gradient-to-br from-white/10 to-white/5 border-white/20 hover:bg-gradient-to-br hover:from-white/15 hover:to-white/10"
+            : "bg-gradient-to-br from-white to-gray-50 border-indigo-200 hover:bg-gradient-to-br hover:from-indigo-50 hover:to-purple-50"
+        }`}
       >
         <div className="flex items-start justify-between mb-6 relative z-10">
           <div className="flex items-start gap-4 flex-1">
             <div className="relative">
               <div
-                className={`w-16 h-16 rounded-full flex items-center justify-center font-bold text-white text-lg shadow-lg ${theme === "dark"
-                  ? "bg-gradient-to-r from-purple-500 to-indigo-500"
-                  : "bg-gradient-to-r from-indigo-600 to-purple-600"
-                  }`}
+                className={`w-16 h-16 rounded-full flex items-center justify-center font-bold text-white text-lg shadow-lg ${
+                  theme === "dark"
+                    ? "bg-gradient-to-r from-purple-500 to-indigo-500"
+                    : "bg-gradient-to-r from-indigo-600 to-purple-600"
+                }`}
               >
                 {discussion.postedBy?.name?.charAt(0) || "U"}
               </div>
@@ -1046,14 +1038,16 @@ const Discussions = () => {
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
                 <h4
-                  className={`font-bold text-lg ${theme === "dark" ? "text-white" : "text-indigo-900"
-                    }`}
+                  className={`font-bold text-lg ${
+                    theme === "dark" ? "text-white" : "text-indigo-900"
+                  }`}
                 >
                   {discussion.postedBy?.name || "Anonymous"}
                 </h4>
                 <span
-                  className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-600"
-                    }`}
+                  className={`text-sm ${
+                    theme === "dark" ? "text-gray-400" : "text-gray-600"
+                  }`}
                 >
                   • {new Date(discussion.createdAt).toLocaleDateString()}
                 </span>
@@ -1063,17 +1057,19 @@ const Discussions = () => {
         </div>
 
         <h3
-          className={`text-2xl font-bold mb-4 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r ${theme === "dark"
-            ? "text-white group-hover:from-purple-400 group-hover:to-yellow-300"
-            : "text-indigo-900 group-hover:from-indigo-600 group-hover:to-purple-600"
-            } transition-all duration-300`}
+          className={`text-2xl font-bold mb-4 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r ${
+            theme === "dark"
+              ? "text-white group-hover:from-purple-400 group-hover:to-yellow-300"
+              : "text-indigo-900 group-hover:from-indigo-600 group-hover:to-purple-600"
+          } transition-all duration-300`}
         >
           {discussion.title}
         </h3>
 
         <p
-          className={`text-base leading-relaxed mb-6 ${theme === "dark" ? "text-gray-300" : "text-indigo-800"
-            }`}
+          className={`text-base leading-relaxed mb-6 ${
+            theme === "dark" ? "text-gray-300" : "text-indigo-800"
+          }`}
         >
           {discussion.content}
         </p>
@@ -1083,10 +1079,11 @@ const Discussions = () => {
             {discussion.tags.map((tag, i) => (
               <span
                 key={i}
-                className={`text-sm px-3 py-1 rounded-full font-medium transition-all duration-300 cursor-pointer hover:scale-105 ${theme === "dark"
-                  ? "bg-purple-900/50 text-purple-300 hover:bg-purple-800/50 border border-purple-500/30"
-                  : "bg-purple-100 text-purple-700 hover:bg-purple-200 border border-purple-300"
-                  }`}
+                className={`text-sm px-3 py-1 rounded-full font-medium transition-all duration-300 cursor-pointer hover:scale-105 ${
+                  theme === "dark"
+                    ? "bg-purple-900/50 text-purple-300 hover:bg-purple-800/50 border border-purple-500/30"
+                    : "bg-purple-100 text-purple-700 hover:bg-purple-200 border border-purple-300"
+                }`}
               >
                 #{tag}
               </span>
@@ -1099,18 +1096,20 @@ const Discussions = () => {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => handleVote(discussion._id, "up")}
-                className={`group flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-300 hover:scale-105 ${userVote === "up"
-                  ? theme === "dark"
-                    ? "bg-green-600 text-white shadow-lg"
-                    : "bg-green-500 text-white shadow-lg"
-                  : theme === "dark"
+                className={`group flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-300 hover:scale-105 ${
+                  userVote === "up"
+                    ? theme === "dark"
+                      ? "bg-green-600 text-white shadow-lg"
+                      : "bg-green-500 text-white shadow-lg"
+                    : theme === "dark"
                     ? "bg-white/10 text-gray-300 hover:bg-green-600/20 hover:text-green-400"
                     : "bg-indigo-100 text-indigo-700 hover:bg-green-100 hover:text-green-600"
-                  }`}
+                }`}
               >
                 <ChevronUp
-                  className={`w-5 h-5 transition-transform duration-300 ${userVote === "up" ? "scale-125" : "group-hover:scale-110"
-                    }`}
+                  className={`w-5 h-5 transition-transform duration-300 ${
+                    userVote === "up" ? "scale-125" : "group-hover:scale-110"
+                  }`}
                 />
                 <span className="font-bold">
                   {getVoteCount(discussion, "up")}
@@ -1118,32 +1117,35 @@ const Discussions = () => {
               </button>
 
               <div
-                className={`px-3 py-2 rounded-xl font-bold text-lg ${netVotes > 0
-                  ? "text-green-400"
-                  : netVotes < 0
+                className={`px-3 py-2 rounded-xl font-bold text-lg ${
+                  netVotes > 0
+                    ? "text-green-400"
+                    : netVotes < 0
                     ? "text-red-400"
                     : theme === "dark"
-                      ? "text-gray-400"
-                      : "text-gray-600"
-                  }`}
+                    ? "text-gray-400"
+                    : "text-gray-600"
+                }`}
               >
                 {netVotes > 0 ? `+${netVotes}` : netVotes}
               </div>
 
               <button
                 onClick={() => handleVote(discussion._id, "down")}
-                className={`group flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-300 hover:scale-105 ${userVote === "down"
-                  ? theme === "dark"
-                    ? "bg-red-600 text-white shadow-lg"
-                    : "bg-red-500 text-white shadow-lg"
-                  : theme === "dark"
+                className={`group flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-300 hover:scale-105 ${
+                  userVote === "down"
+                    ? theme === "dark"
+                      ? "bg-red-600 text-white shadow-lg"
+                      : "bg-red-500 text-white shadow-lg"
+                    : theme === "dark"
                     ? "bg-white/10 text-gray-300 hover:bg-red-600/20 hover:text-red-400"
                     : "bg-indigo-100 text-indigo-700 hover:bg-red-100 hover:text-red-600"
-                  }`}
+                }`}
               >
                 <ChevronDown
-                  className={`w-5 h-5 transition-transform duration-300 ${userVote === "down" ? "scale-125" : "group-hover:scale-110"
-                    }`}
+                  className={`w-5 h-5 transition-transform duration-300 ${
+                    userVote === "down" ? "scale-125" : "group-hover:scale-110"
+                  }`}
                 />
                 <span className="font-bold">
                   {getVoteCount(discussion, "down")}
@@ -1156,16 +1158,18 @@ const Discussions = () => {
               className="flex items-center gap-2 group transition-all duration-300 hover:scale-105"
             >
               <Heart
-                className={`w-5 h-5 transition-colors duration-200 ${likedPosts.has(discussion._id)
-                  ? "text-red-500 fill-current"
-                  : theme === "dark"
+                className={`w-5 h-5 transition-colors duration-200 ${
+                  likedPosts.has(discussion._id)
+                    ? "text-red-500 fill-current"
+                    : theme === "dark"
                     ? "text-gray-400 group-hover:text-red-400"
                     : "text-gray-600 group-hover:text-red-500"
-                  }`}
+                }`}
               />
               <span
-                className={`font-medium ${theme === "dark" ? "text-gray-300" : "text-indigo-700"
-                  }`}
+                className={`font-medium ${
+                  theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                }`}
               >
                 {(discussion.likes || 0) +
                   (likedPosts.has(discussion._id) ? 1 : 0)}
@@ -1177,14 +1181,16 @@ const Discussions = () => {
               onClick={() => getPostComments(discussion._id)}
             >
               <MessageSquare
-                className={`w-5 h-5 ${theme === "dark"
-                  ? "text-gray-400 group-hover:text-blue-400"
-                  : "text-gray-600 group-hover:text-blue-500"
-                  } transition-colors duration-200`}
+                className={`w-5 h-5 ${
+                  theme === "dark"
+                    ? "text-gray-400 group-hover:text-blue-400"
+                    : "text-gray-600 group-hover:text-blue-500"
+                } transition-colors duration-200`}
               />
               <span
-                className={`font-medium ${theme === "dark" ? "text-gray-300" : "text-indigo-700"
-                  }`}
+                className={`font-medium ${
+                  theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                }`}
               >
                 {discussion.comments?.length || 0}
               </span>
@@ -1195,12 +1201,14 @@ const Discussions = () => {
 
             <div className="flex items-center gap-2">
               <Eye
-                className={`w-5 h-5 ${theme === "dark" ? "text-gray-400" : "text-gray-600"
-                  }`}
+                className={`w-5 h-5 ${
+                  theme === "dark" ? "text-gray-400" : "text-gray-600"
+                }`}
               />
               <span
-                className={`font-medium ${theme === "dark" ? "text-gray-300" : "text-indigo-700"
-                  }`}
+                className={`font-medium ${
+                  theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                }`}
               >
                 {discussion.views || 0}
               </span>
@@ -1210,32 +1218,35 @@ const Discussions = () => {
           <div className="flex items-center gap-2">
             <button
               onClick={() => toggleBookmark(discussion._id)}
-              className={`p-3 rounded-xl transition-all duration-300 hover:scale-105 ${bookmarkedPosts.has(discussion._id)
-                ? theme === "dark"
-                  ? "bg-yellow-600 text-white shadow-lg"
-                  : "bg-yellow-500 text-white shadow-lg"
-                : theme === "dark"
+              className={`p-3 rounded-xl transition-all duration-300 hover:scale-105 ${
+                bookmarkedPosts.has(discussion._id)
+                  ? theme === "dark"
+                    ? "bg-yellow-600 text-white shadow-lg"
+                    : "bg-yellow-500 text-white shadow-lg"
+                  : theme === "dark"
                   ? "hover:bg-white/10 text-gray-400 hover:text-yellow-400"
                   : "hover:bg-indigo-100 text-indigo-600 hover:text-yellow-600"
-                }`}
+              }`}
             >
               <Bookmark className="w-5 h-5" />
             </button>
 
             <button
-              className={`p-3 rounded-xl transition-all duration-300 hover:scale-105 ${theme === "dark"
-                ? "hover:bg-white/10 text-gray-400"
-                : "hover:bg-indigo-100 text-indigo-600"
-                }`}
+              className={`p-3 rounded-xl transition-all duration-300 hover:scale-105 ${
+                theme === "dark"
+                  ? "hover:bg-white/10 text-gray-400"
+                  : "hover:bg-indigo-100 text-indigo-600"
+              }`}
             >
               <Share2 className="w-5 h-5" />
             </button>
 
             <button
-              className={`p-3 rounded-xl transition-all duration-300 hover:scale-105 ${theme === "dark"
-                ? "hover:bg-white/10 text-gray-400"
-                : "hover:bg-indigo-100 text-indigo-600"
-                }`}
+              className={`p-3 rounded-xl transition-all duration-300 hover:scale-105 ${
+                theme === "dark"
+                  ? "hover:bg-white/10 text-gray-400"
+                  : "hover:bg-indigo-100 text-indigo-600"
+              }`}
             >
               <Flag className="w-5 h-5" />
             </button>
@@ -1249,10 +1260,11 @@ const Discussions = () => {
                 showQuickReply === discussion._id ? null : discussion._id
               )
             }
-            className={`flex-1 py-4 rounded-2xl font-bold transition-all duration-300 hover:scale-105 transform hover:shadow-xl ${theme === "dark"
-              ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
-              : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
-              }`}
+            className={`flex-1 py-4 rounded-2xl font-bold transition-all duration-300 hover:scale-105 transform hover:shadow-xl ${
+              theme === "dark"
+                ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
+                : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+            }`}
           >
             <MessageCircle className="w-4 h-4 mr-2 inline" />
             Quick Reply
@@ -1260,10 +1272,11 @@ const Discussions = () => {
 
           <button
             onClick={() => handleViewFullPost(discussion)}
-            className={`px-8 py-4 rounded-2xl font-bold border transition-all duration-300 hover:scale-105 transform hover:shadow-xl ${theme === "dark"
-              ? "border-white/20 hover:bg-white/10 text-white"
-              : "border-indigo-200 hover:bg-indigo-50 text-indigo-700"
-              }`}
+            className={`px-8 py-4 rounded-2xl font-bold border transition-all duration-300 hover:scale-105 transform hover:shadow-xl ${
+              theme === "dark"
+                ? "border-white/20 hover:bg-white/10 text-white"
+                : "border-indigo-200 hover:bg-indigo-50 text-indigo-700"
+            }`}
           >
             <ExternalLink className="w-4 h-4 mr-2 inline" />
             View Full Post
@@ -1272,17 +1285,19 @@ const Discussions = () => {
 
         {showQuickReply === discussion._id && (
           <div
-            className={`mt-6 p-6 rounded-2xl border transition-all duration-300 ${theme === "dark"
-              ? "bg-black/20 border-white/10"
-              : "bg-indigo-50 border-indigo-200"
-              }`}
+            className={`mt-6 p-6 rounded-2xl border transition-all duration-300 ${
+              theme === "dark"
+                ? "bg-black/20 border-white/10"
+                : "bg-indigo-50 border-indigo-200"
+            }`}
           >
             <div className="flex gap-4">
               <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-sm ${theme === "dark"
-                  ? "bg-gradient-to-r from-purple-500 to-indigo-500"
-                  : "bg-gradient-to-r from-indigo-600 to-purple-600"
-                  }`}
+                className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-sm ${
+                  theme === "dark"
+                    ? "bg-gradient-to-r from-purple-500 to-indigo-500"
+                    : "bg-gradient-to-r from-indigo-600 to-purple-600"
+                }`}
               >
                 YU
               </div>
@@ -1291,17 +1306,19 @@ const Discussions = () => {
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
                   placeholder="Write your reply..."
-                  className={`w-full p-4 rounded-xl border resize-none transition-all duration-300 focus:outline-none focus:ring-2 focus:scale-105 ${theme === "dark"
-                    ? "bg-white/10 border-white/20 text-white placeholder-gray-400 focus:border-purple-400 focus:ring-purple-400/20"
-                    : "bg-white border-indigo-200 text-indigo-900 placeholder-indigo-400 focus:border-indigo-500 focus:ring-indigo-500/20"
-                    }`}
+                  className={`w-full p-4 rounded-xl border resize-none transition-all duration-300 focus:outline-none focus:ring-2 focus:scale-105 ${
+                    theme === "dark"
+                      ? "bg-white/10 border-white/20 text-white placeholder-gray-400 focus:border-purple-400 focus:ring-purple-400/20"
+                      : "bg-white border-indigo-200 text-indigo-900 placeholder-indigo-400 focus:border-indigo-500 focus:ring-indigo-500/20"
+                  }`}
                   rows={4}
                 />
                 <div className="flex items-center justify-between mt-3">
                   <div className="flex items-center gap-2">
                     <span
-                      className={`text-xs ${theme === "dark" ? "text-gray-400" : "text-indigo-600"
-                        }`}
+                      className={`text-xs ${
+                        theme === "dark" ? "text-gray-400" : "text-indigo-600"
+                      }`}
                     >
                       {replyText.length}/500
                     </span>
@@ -1309,10 +1326,11 @@ const Discussions = () => {
                   <button
                     onClick={() => handleQuickReply(discussion._id)}
                     disabled={!replyText.trim()}
-                    className={`px-6 py-2 rounded-xl font-medium transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed ${theme === "dark"
-                      ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
-                      : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
-                      }`}
+                    className={`px-6 py-2 rounded-xl font-medium transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed ${
+                      theme === "dark"
+                        ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
+                        : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+                    }`}
                   >
                     <Send className="w-4 h-4 mr-2 inline" />
                     Reply
@@ -1327,39 +1345,44 @@ const Discussions = () => {
         {comments[discussion._id] && comments[discussion._id].length > 0 && (
           <div className="mt-6 space-y-4">
             <h4
-              className={`font-bold ${theme === "dark" ? "text-white" : "text-indigo-900"
-                }`}
+              className={`font-bold ${
+                theme === "dark" ? "text-white" : "text-indigo-900"
+              }`}
             >
               Comments ({comments[discussion._id].length})
             </h4>
             {comments[discussion._id].map((comment) => (
               <div
                 key={comment._id}
-                className={`p-4 rounded-xl border ${theme === "dark"
-                  ? "bg-white/5 border-white/10"
-                  : "bg-gray-50 border-gray-200"
-                  }`}
+                className={`p-4 rounded-xl border ${
+                  theme === "dark"
+                    ? "bg-white/5 border-white/10"
+                    : "bg-gray-50 border-gray-200"
+                }`}
               >
                 <div className="flex items-start gap-3">
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-white text-xs ${theme === "dark"
-                      ? "bg-gradient-to-r from-green-500 to-teal-500"
-                      : "bg-gradient-to-r from-green-600 to-teal-600"
-                      }`}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-white text-xs ${
+                      theme === "dark"
+                        ? "bg-gradient-to-r from-green-500 to-teal-500"
+                        : "bg-gradient-to-r from-green-600 to-teal-600"
+                    }`}
                   >
                     {comment.user?.name?.charAt(0) || "U"}
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <span
-                        className={`font-bold text-sm ${theme === "dark" ? "text-white" : "text-indigo-900"
-                          }`}
+                        className={`font-bold text-sm ${
+                          theme === "dark" ? "text-white" : "text-indigo-900"
+                        }`}
                       >
                         {comment.user?.name || "Anonymous"}
                       </span>
                       <span
-                        className={`text-xs ${theme === "dark" ? "text-gray-400" : "text-gray-600"
-                          }`}
+                        className={`text-xs ${
+                          theme === "dark" ? "text-gray-400" : "text-gray-600"
+                        }`}
                       >
                         {comment.createdAt
                           ? new Date(comment.createdAt).toLocaleDateString()
@@ -1367,8 +1390,9 @@ const Discussions = () => {
                       </span>
                     </div>
                     <p
-                      className={`text-sm mb-2 ${theme === "dark" ? "text-gray-300" : "text-indigo-800"
-                        }`}
+                      className={`text-sm mb-2 ${
+                        theme === "dark" ? "text-gray-300" : "text-indigo-800"
+                      }`}
                     >
                       {comment.content || comment.text}
                     </p>
@@ -1379,10 +1403,11 @@ const Discussions = () => {
                             replyingTo === comment._id ? null : comment._id
                           )
                         }
-                        className={`text-xs font-medium transition-colors ${theme === "dark"
-                          ? "text-gray-400 hover:text-white"
-                          : "text-gray-600 hover:text-indigo-900"
-                          }`}
+                        className={`text-xs font-medium transition-colors ${
+                          theme === "dark"
+                            ? "text-gray-400 hover:text-white"
+                            : "text-gray-600 hover:text-indigo-900"
+                        }`}
                       >
                         <Reply className="w-3 h-3 mr-1 inline" />
                         Reply
@@ -1391,10 +1416,11 @@ const Discussions = () => {
                         onClick={() =>
                           handleDeleteComment(comment._id, discussion._id)
                         }
-                        className={`text-xs font-medium transition-colors ${theme === "dark"
-                          ? "text-red-400 hover:text-red-300"
-                          : "text-red-600 hover:text-red-500"
-                          }`}
+                        className={`text-xs font-medium transition-colors ${
+                          theme === "dark"
+                            ? "text-red-400 hover:text-red-300"
+                            : "text-red-600 hover:text-red-500"
+                        }`}
                       >
                         <Trash2 className="w-3 h-3 mr-1 inline" />
                         Delete
@@ -1413,19 +1439,21 @@ const Discussions = () => {
                               }))
                             }
                             placeholder="Write a reply..."
-                            className={`flex-1 p-2 rounded-lg border text-sm resize-none ${theme === "dark"
-                              ? "bg-white/10 border-white/20 text-white placeholder-gray-400"
-                              : "bg-white border-indigo-200 text-indigo-900 placeholder-indigo-400"
-                              }`}
+                            className={`flex-1 p-2 rounded-lg border text-sm resize-none ${
+                              theme === "dark"
+                                ? "bg-white/10 border-white/20 text-white placeholder-gray-400"
+                                : "bg-white border-indigo-200 text-indigo-900 placeholder-indigo-400"
+                            }`}
                             rows={2}
                           />
                           <button
                             onClick={() => handleReplyToComment(comment._id)}
                             disabled={!replyTexts[comment._id]?.trim()}
-                            className={`px-3 py-1 rounded-lg text-xs font-medium transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${theme === "dark"
-                              ? "bg-purple-600 hover:bg-purple-700 text-white"
-                              : "bg-indigo-600 hover:bg-indigo-700 text-white"
-                              }`}
+                            className={`px-3 py-1 rounded-lg text-xs font-medium transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${
+                              theme === "dark"
+                                ? "bg-purple-600 hover:bg-purple-700 text-white"
+                                : "bg-indigo-600 hover:bg-indigo-700 text-white"
+                            }`}
                           >
                             Reply
                           </button>
@@ -1442,23 +1470,424 @@ const Discussions = () => {
     );
   };
 
+  const FullPostModal = ({
+    selectedDiscussion,
+    showFullPost,
+    setShowFullPost,
+    theme,
+    comments,
+    newComment,
+    setNewComment,
+    handleAddComment,
+    discussionComments,
+    replyingTo,
+    setReplyingTo,
+    replyTexts,
+    setReplyTexts,
+    handleReplyToComment,
+    handleDeleteComment,
+  }) => {
+    if (!selectedDiscussion || !showFullPost) return null;
+
+    const discussionComments = comments[selectedDiscussion._id] || [];
+
+    return (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div
+          className={`w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl border shadow-2xl ${
+            theme === "dark"
+              ? "bg-slate-900 border-white/20"
+              : "bg-white border-indigo-200"
+          }`}
+        >
+          {/* Header */}
+          <div
+            className={`sticky top-0 p-6 border-b backdrop-blur-xl ${
+              theme === "dark"
+                ? "bg-slate-900/80 border-white/20"
+                : "bg-white/80 border-indigo-200"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => setShowFullPost(false)}
+                  className={`p-2 rounded-xl transition-colors ${
+                    theme === "dark"
+                      ? "hover:bg-white/10"
+                      : "hover:bg-indigo-100"
+                  }`}
+                >
+                  <ArrowLeft
+                    className={`w-6 h-6 ${
+                      theme === "dark" ? "text-white" : "text-indigo-900"
+                    }`}
+                  />
+                </button>
+                <h1
+                  className={`text-2xl font-bold ${
+                    theme === "dark" ? "text-white" : "text-indigo-900"
+                  }`}
+                >
+                  Full Discussion
+                </h1>
+              </div>
+              <button
+                onClick={() => setShowFullPost(false)}
+                className={`p-2 rounded-xl transition-colors ${
+                  theme === "dark" ? "hover:bg-white/10" : "hover:bg-indigo-100"
+                }`}
+              >
+                <X
+                  className={`w-6 h-6 ${
+                    theme === "dark" ? "text-white" : "text-indigo-900"
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="p-6">
+            {/* Post Title */}
+            <h2
+              className={`text-3xl font-bold mb-6 ${
+                theme === "dark" ? "text-white" : "text-indigo-900"
+              }`}
+            >
+              {selectedDiscussion.title}
+            </h2>
+
+            {/* Post Content */}
+            <div
+              className={`prose prose-lg max-w-none mb-8 ${
+                theme === "dark"
+                  ? "prose-invert text-gray-300"
+                  : "text-indigo-800"
+              }`}
+            >
+              <div className="whitespace-pre-wrap">
+                {selectedDiscussion.content}
+              </div>
+            </div>
+
+            {/* Tags */}
+            {selectedDiscussion.tags && (
+              <div className="flex flex-wrap gap-2 mb-6">
+                {selectedDiscussion.tags.map((tag, i) => (
+                  <span
+                    key={i}
+                    className={`text-sm px-3 py-1 rounded-full font-medium ${
+                      theme === "dark"
+                        ? "bg-purple-900/50 text-purple-300 border border-purple-500/30"
+                        : "bg-purple-100 text-purple-700 border border-purple-300"
+                    }`}
+                  >
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Comments Section */}
+            <div className="border-t pt-8">
+              <div className="flex items-center justify-between mb-6">
+                <h3
+                  className={`text-2xl font-bold ${
+                    theme === "dark" ? "text-white" : "text-indigo-900"
+                  }`}
+                >
+                  Comments ({discussionComments.length})
+                </h3>
+              </div>
+
+              {/* Add Comment */}
+              <div className="mb-8">
+                <div className="flex gap-4">
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-sm ${
+                      theme === "dark"
+                        ? "bg-gradient-to-r from-purple-500 to-indigo-500"
+                        : "bg-gradient-to-r from-indigo-600 to-purple-600"
+                    }`}
+                  >
+                    YU
+                  </div>
+                  <div className="flex-1">
+                    <textarea
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      key="main-comment"
+                      placeholder="Add a comment..."
+                      className={`w-full p-4 rounded-xl border resize-none transition-all duration-300 focus:outline-none focus:ring-2 ${
+                        theme === "dark"
+                          ? "bg-white/10 border-white/20 text-white placeholder-gray-400 focus:border-purple-400 focus:ring-purple-400/20"
+                          : "bg-white border-indigo-200 text-indigo-900 placeholder-indigo-400 focus:border-indigo-500 focus:ring-indigo-500/20"
+                      }`}
+                      rows={3}
+                    />
+                    <div className="flex items-center justify-between mt-3">
+                      <div className="flex items-center gap-4">
+                        <button
+                          className={`p-2 rounded-lg transition-colors ${
+                            theme === "dark"
+                              ? "hover:bg-white/10"
+                              : "hover:bg-indigo-100"
+                          }`}
+                        >
+                          <ImageIcon
+                            className={`w-4 h-4 ${
+                              theme === "dark"
+                                ? "text-gray-400"
+                                : "text-indigo-600"
+                            }`}
+                          />
+                        </button>
+                        <button
+                          className={`p-2 rounded-lg transition-colors ${
+                            theme === "dark"
+                              ? "hover:bg-white/10"
+                              : "hover:bg-indigo-100"
+                          }`}
+                        >
+                          <Smile
+                            className={`w-4 h-4 ${
+                              theme === "dark"
+                                ? "text-gray-400"
+                                : "text-indigo-600"
+                            }`}
+                          />
+                        </button>
+                        <button
+                          className={`p-2 rounded-lg transition-colors ${
+                            theme === "dark"
+                              ? "hover:bg-white/10"
+                              : "hover:bg-indigo-100"
+                          }`}
+                        >
+                          <AtSign
+                            className={`w-4 h-4 ${
+                              theme === "dark"
+                                ? "text-gray-400"
+                                : "text-indigo-600"
+                            }`}
+                          />
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => handleAddComment(selectedDiscussion._id)}
+                        disabled={!newComment.trim()}
+                        className={`px-6 py-2 rounded-xl font-medium transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed ${
+                          theme === "dark"
+                            ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
+                            : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+                        }`}
+                      >
+                        <Send className="w-4 h-4 mr-2 inline" />
+                        Comment
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Comments List */}
+              <div className="space-y-6">
+                {discussionComments.map((comment) => (
+                  <div key={comment._id} className="space-y-4">
+                    <div
+                      className={`p-6 rounded-xl border ${
+                        theme === "dark"
+                          ? "bg-white/5 border-white/10"
+                          : "bg-gray-50 border-gray-200"
+                      }`}
+                    >
+                      <div className="flex items-start gap-4">
+                        <div
+                          className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-sm ${
+                            theme === "dark"
+                              ? "bg-gradient-to-r from-green-500 to-teal-500"
+                              : "bg-gradient-to-r from-green-600 to-teal-600"
+                          }`}
+                        >
+                          {comment.user?.name?.charAt(0) || "U"}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <span
+                              className={`font-bold ${
+                                theme === "dark"
+                                  ? "text-white"
+                                  : "text-indigo-900"
+                              }`}
+                            >
+                              {comment.user?.name || "Anonymous"}
+                            </span>
+                            <span
+                              className={`text-sm ${
+                                theme === "dark"
+                                  ? "text-gray-400"
+                                  : "text-gray-600"
+                              }`}
+                            >
+                              {comment.createdAt
+                                ? new Date(
+                                    comment.createdAt
+                                  ).toLocaleDateString()
+                                : "Recently"}
+                            </span>
+                          </div>
+                          <p
+                            className={`mb-4 ${
+                              theme === "dark"
+                                ? "text-gray-300"
+                                : "text-indigo-800"
+                            }`}
+                          >
+                            {comment.content || comment.text}
+                          </p>
+                          <div className="flex items-center gap-4">
+                            <button
+                              onClick={() =>
+                                setReplyingTo(
+                                  replyingTo === comment._id
+                                    ? null
+                                    : comment._id
+                                )
+                              }
+                              className={`flex items-center gap-2 text-sm font-medium transition-colors ${
+                                theme === "dark"
+                                  ? "text-gray-400 hover:text-white"
+                                  : "text-gray-600 hover:text-indigo-900"
+                              }`}
+                            >
+                              <Reply className="w-4 h-4" />
+                              Reply
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleDeleteComment(
+                                  comment._id,
+                                  selectedDiscussion._id
+                                )
+                              }
+                              className={`flex items-center gap-2 text-sm font-medium transition-colors ${
+                                theme === "dark"
+                                  ? "text-red-400 hover:text-red-300"
+                                  : "text-red-600 hover:text-red-500"
+                              }`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              Delete
+                            </button>
+                          </div>
+
+                          {replyingTo === comment._id && (
+                            <div className="mt-4">
+                              <div className="flex gap-3">
+                                <textarea
+                                  value={replyTexts[comment._id] || ""}
+                                  key={`reply-${comment._id}`}
+                                  onChange={(e) =>
+                                    setReplyTexts((prev) => ({
+                                      ...prev,
+                                      [comment._id]: e.target.value,
+                                    }))
+                                  }
+                                  placeholder="Write a reply..."
+                                  className={`flex-1 p-3 rounded-lg border text-sm resize-none ${
+                                    theme === "dark"
+                                      ? "bg-white/10 border-white/20 text-white placeholder-gray-400"
+                                      : "bg-white border-indigo-200 text-indigo-900 placeholder-indigo-400"
+                                  }`}
+                                  rows={3}
+                                />
+                                <button
+                                  onClick={() =>
+                                    handleReplyToComment(comment._id)
+                                  }
+                                  disabled={!replyTexts[comment._id]?.trim()}
+                                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${
+                                    theme === "dark"
+                                      ? "bg-purple-600 hover:bg-purple-700 text-white"
+                                      : "bg-indigo-600 hover:bg-indigo-700 text-white"
+                                  }`}
+                                >
+                                  Reply
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    {comment.replies && comment.replies.length > 0 && (
+                      <div className="ml-12 mt-4 space-y-4">
+                        {comment.replies.map((reply) => (
+                          <div
+                            key={reply._id}
+                            className={`p-4 rounded-lg border text-sm ${
+                              theme === "dark"
+                                ? "bg-white/5 border-white/10 text-gray-300"
+                                : "bg-gray-50 border-gray-200 text-indigo-800"
+                            }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div
+                                className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-white text-xs ${
+                                  theme === "dark"
+                                    ? "bg-gradient-to-r from-green-500 to-teal-500"
+                                    : "bg-gradient-to-r from-green-600 to-teal-600"
+                                }`}
+                              >
+                                {reply.user?.name?.charAt(0) || "U"}
+                              </div>
+                              <div>
+                                <div className="font-medium">
+                                  {reply.user?.name || "Anonymous"}
+                                </div>
+                                <div className="text-xs mt-1 opacity-80">
+                                  {new Date(
+                                    reply.createdAt
+                                  ).toLocaleDateString()}
+                                </div>
+                                <p className="mt-1">{reply.text}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const CommunityDiscussions = ({ community, onBack }) => {
     return (
       <div className="space-y-8">
         <div className="flex items-center gap-4 mb-6">
           <button
             onClick={onBack}
-            className={`p-2 rounded-xl ${theme === "dark" ? "hover:bg-white/10" : "hover:bg-indigo-100"
-              }`}
+            className={`p-2 rounded-xl ${
+              theme === "dark" ? "hover:bg-white/10" : "hover:bg-indigo-100"
+            }`}
           >
             <ArrowLeft
-              className={`w-6 h-6 ${theme === "dark" ? "text-white" : "text-gray-800"
-                }`}
+              className={`w-6 h-6 ${
+                theme === "dark" ? "text-white" : "text-gray-800"
+              }`}
             />
           </button>
           <h2
-            className={`text-2xl font-black ${theme === "dark" ? "text-white" : "text-gray-900"
-              }`}
+            className={`text-2xl font-black ${
+              theme === "dark" ? "text-white" : "text-gray-900"
+            }`}
           >
             Discussions in {community.name}
           </h2>
@@ -1477,10 +1906,11 @@ const Discussions = () => {
             <button
               onClick={loadMorePosts}
               disabled={postsLoading}
-              className={`px-8 py-4 rounded-2xl font-bold transition-all duration-300 hover:scale-105 transform hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed ${theme === "dark"
-                ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
-                : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
-                }`}
+              className={`px-8 py-4 rounded-2xl font-bold transition-all duration-300 hover:scale-105 transform hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed ${
+                theme === "dark"
+                  ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
+                  : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+              }`}
             >
               {postsLoading ? (
                 <>
@@ -1501,400 +1931,60 @@ const Discussions = () => {
   };
 
   // Full Post Modal Component
-  const FullPostModal = () => {
-    if (!selectedDiscussion || !showFullPost) return null;
-
-    const discussionComments = comments[selectedDiscussion._id] || [];
-
-    return (
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div
-          className={`w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl border shadow-2xl ${theme === "dark"
-            ? "bg-slate-900 border-white/20"
-            : "bg-white border-indigo-200"
-            }`}
-        >
-          {/* Header */}
-          <div
-            className={`sticky top-0 p-6 border-b backdrop-blur-xl ${theme === "dark"
-              ? "bg-slate-900/80 border-white/20"
-              : "bg-white/80 border-indigo-200"
-              }`}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => setShowFullPost(false)}
-                  className={`p-2 rounded-xl transition-colors ${theme === "dark"
-                    ? "hover:bg-white/10"
-                    : "hover:bg-indigo-100"
-                    }`}
-                >
-                  <ArrowLeft
-                    className={`w-6 h-6 ${theme === "dark" ? "text-white" : "text-indigo-900"
-                      }`}
-                  />
-                </button>
-                <h1
-                  className={`text-2xl font-bold ${theme === "dark" ? "text-white" : "text-indigo-900"
-                    }`}
-                >
-                  Full Discussion
-                </h1>
-              </div>
-              <button
-                onClick={() => setShowFullPost(false)}
-                className={`p-2 rounded-xl transition-colors ${theme === "dark" ? "hover:bg-white/10" : "hover:bg-indigo-100"
-                  }`}
-              >
-                <X
-                  className={`w-6 h-6 ${theme === "dark" ? "text-white" : "text-indigo-900"
-                    }`}
-                />
-              </button>
-            </div>
-          </div>
-
-          {/* Content */}
-          <div className="p-6">
-            {/* Post Title */}
-            <h2
-              className={`text-3xl font-bold mb-6 ${theme === "dark" ? "text-white" : "text-indigo-900"
-                }`}
-            >
-              {selectedDiscussion.title}
-            </h2>
-
-            {/* Post Content */}
-            <div
-              className={`prose prose-lg max-w-none mb-8 ${theme === "dark"
-                ? "prose-invert text-gray-300"
-                : "text-indigo-800"
-                }`}
-            >
-              <div className="whitespace-pre-wrap">
-                {selectedDiscussion.content}
-              </div>
-            </div>
-
-            {/* Tags */}
-            {selectedDiscussion.tags && (
-              <div className="flex flex-wrap gap-2 mb-6">
-                {selectedDiscussion.tags.map((tag, i) => (
-                  <span
-                    key={i}
-                    className={`text-sm px-3 py-1 rounded-full font-medium ${theme === "dark"
-                      ? "bg-purple-900/50 text-purple-300 border border-purple-500/30"
-                      : "bg-purple-100 text-purple-700 border border-purple-300"
-                      }`}
-                  >
-                    #{tag}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {/* Comments Section */}
-            <div className="border-t pt-8">
-              <div className="flex items-center justify-between mb-6">
-                <h3
-                  className={`text-2xl font-bold ${theme === "dark" ? "text-white" : "text-indigo-900"
-                    }`}
-                >
-                  Comments ({discussionComments.length})
-                </h3>
-              </div>
-
-              {/* Add Comment */}
-              <div className="mb-8">
-                <div className="flex gap-4">
-                  <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-sm ${theme === "dark"
-                      ? "bg-gradient-to-r from-purple-500 to-indigo-500"
-                      : "bg-gradient-to-r from-indigo-600 to-purple-600"
-                      }`}
-                  >
-                    YU
-                  </div>
-                  <div className="flex-1">
-                    <textarea
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                      key="main-comment"
-                      placeholder="Add a comment..."
-                      className={`w-full p-4 rounded-xl border resize-none transition-all duration-300 focus:outline-none focus:ring-2 ${theme === "dark"
-                        ? "bg-white/10 border-white/20 text-white placeholder-gray-400 focus:border-purple-400 focus:ring-purple-400/20"
-                        : "bg-white border-indigo-200 text-indigo-900 placeholder-indigo-400 focus:border-indigo-500 focus:ring-indigo-500/20"
-                        }`}
-                      rows={3}
-                    />
-                    <div className="flex items-center justify-between mt-3">
-                      <div className="flex items-center gap-4">
-                        <button
-                          className={`p-2 rounded-lg transition-colors ${theme === "dark"
-                            ? "hover:bg-white/10"
-                            : "hover:bg-indigo-100"
-                            }`}
-                        >
-                          <ImageIcon
-                            className={`w-4 h-4 ${theme === "dark"
-                              ? "text-gray-400"
-                              : "text-indigo-600"
-                              }`}
-                          />
-                        </button>
-                        <button
-                          className={`p-2 rounded-lg transition-colors ${theme === "dark"
-                            ? "hover:bg-white/10"
-                            : "hover:bg-indigo-100"
-                            }`}
-                        >
-                          <Smile
-                            className={`w-4 h-4 ${theme === "dark"
-                              ? "text-gray-400"
-                              : "text-indigo-600"
-                              }`}
-                          />
-                        </button>
-                        <button
-                          className={`p-2 rounded-lg transition-colors ${theme === "dark"
-                            ? "hover:bg-white/10"
-                            : "hover:bg-indigo-100"
-                            }`}
-                        >
-                          <AtSign
-                            className={`w-4 h-4 ${theme === "dark"
-                              ? "text-gray-400"
-                              : "text-indigo-600"
-                              }`}
-                          />
-                        </button>
-                      </div>
-                      <button
-                        onClick={() => handleAddComment(selectedDiscussion._id)}
-                        disabled={!newComment.trim()}
-                        className={`px-6 py-2 rounded-xl font-medium transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed ${theme === "dark"
-                          ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
-                          : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
-                          }`}
-                      >
-                        <Send className="w-4 h-4 mr-2 inline" />
-                        Comment
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Comments List */}
-              <div className="space-y-6">
-                {discussionComments.map((comment) => (
-                  <div key={comment._id} className="space-y-4">
-                    <div
-                      className={`p-6 rounded-xl border ${theme === "dark"
-                        ? "bg-white/5 border-white/10"
-                        : "bg-gray-50 border-gray-200"
-                        }`}
-                    >
-                      <div className="flex items-start gap-4">
-                        <div
-                          className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-sm ${theme === "dark"
-                            ? "bg-gradient-to-r from-green-500 to-teal-500"
-                            : "bg-gradient-to-r from-green-600 to-teal-600"
-                            }`}
-                        >
-                          {comment.user?.name?.charAt(0) || "U"}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <span
-                              className={`font-bold ${theme === "dark"
-                                ? "text-white"
-                                : "text-indigo-900"
-                                }`}
-                            >
-                              {comment.user?.name || "Anonymous"}
-                            </span>
-                            <span
-                              className={`text-sm ${theme === "dark"
-                                ? "text-gray-400"
-                                : "text-gray-600"
-                                }`}
-                            >
-                              {comment.createdAt
-                                ? new Date(
-                                  comment.createdAt
-                                ).toLocaleDateString()
-                                : "Recently"}
-                            </span>
-                          </div>
-                          <p
-                            className={`mb-4 ${theme === "dark"
-                              ? "text-gray-300"
-                              : "text-indigo-800"
-                              }`}
-                          >
-                            {comment.content || comment.text}
-                          </p>
-                          <div className="flex items-center gap-4">
-                            <button
-                              onClick={() =>
-                                setReplyingTo(
-                                  replyingTo === comment._id
-                                    ? null
-                                    : comment._id
-                                )
-                              }
-                              className={`flex items-center gap-2 text-sm font-medium transition-colors ${theme === "dark"
-                                ? "text-gray-400 hover:text-white"
-                                : "text-gray-600 hover:text-indigo-900"
-                                }`}
-                            >
-                              <Reply className="w-4 h-4" />
-                              Reply
-                            </button>
-                            <button
-                              onClick={() =>
-                                handleDeleteComment(
-                                  comment._id,
-                                  selectedDiscussion._id
-                                )
-                              }
-                              className={`flex items-center gap-2 text-sm font-medium transition-colors ${theme === "dark"
-                                ? "text-red-400 hover:text-red-300"
-                                : "text-red-600 hover:text-red-500"
-                                }`}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              Delete
-                            </button>
-                          </div>
-
-                          {replyingTo === comment._id && (
-                            <div className="mt-4">
-                              <div className="flex gap-3">
-                                <textarea
-                                  value={replyTexts[comment._id] || ""}
-                                  key={`reply-${comment._id}`}
-                                  onChange={(e) =>
-                                    setReplyTexts((prev) => ({
-                                      ...prev,
-                                      [comment._id]: e.target.value,
-                                    }))
-                                  }
-                                  placeholder="Write a reply..."
-                                  className={`flex-1 p-3 rounded-lg border text-sm resize-none ${theme === "dark"
-                                    ? "bg-white/10 border-white/20 text-white placeholder-gray-400"
-                                    : "bg-white border-indigo-200 text-indigo-900 placeholder-indigo-400"
-                                    }`}
-                                  rows={3}
-                                />
-                                <button
-                                  onClick={() =>
-                                    handleReplyToComment(comment._id)
-                                  }
-                                  disabled={!replyTexts[comment._id]?.trim()}
-                                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${theme === "dark"
-                                    ? "bg-purple-600 hover:bg-purple-700 text-white"
-                                    : "bg-indigo-600 hover:bg-indigo-700 text-white"
-                                    }`}
-                                >
-                                  Reply
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    {comment.replies && comment.replies.length > 0 && (
-                      <div className="ml-12 mt-4 space-y-4">
-                        {comment.replies.map((reply) => (
-                          <div
-                            key={reply._id}
-                            className={`p-4 rounded-lg border text-sm ${theme === "dark"
-                              ? "bg-white/5 border-white/10 text-gray-300"
-                              : "bg-gray-50 border-gray-200 text-indigo-800"
-                              }`}
-                          >
-                            <div className="flex items-start gap-3">
-                              <div
-                                className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-white text-xs ${theme === "dark"
-                                  ? "bg-gradient-to-r from-green-500 to-teal-500"
-                                  : "bg-gradient-to-r from-green-600 to-teal-600"
-                                  }`}
-                              >
-                                {reply.user?.name?.charAt(0) || "U"}
-                              </div>
-                              <div>
-                                <div className="font-medium">{reply.user?.name || "Anonymous"}</div>
-                                <div className="text-xs mt-1 opacity-80">
-                                  {new Date(reply.createdAt).toLocaleDateString()}
-                                </div>
-                                <p className="mt-1">{reply.text}</p>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   // Enhanced Trending Topics Component
   const TrendingTopics = () => (
     <div
-      className={`backdrop-blur-xl rounded-2xl p-6 border transition-all duration-300 hover:shadow-lg ${theme === "dark"
-        ? "bg-white/5 border-white/10"
-        : "bg-white border-indigo-200"
-        }`}
+      className={`backdrop-blur-xl rounded-2xl p-6 border transition-all duration-300 hover:shadow-lg ${
+        theme === "dark"
+          ? "bg-white/5 border-white/10"
+          : "bg-white border-indigo-200"
+      }`}
     >
       <div className="flex items-center gap-2 mb-6">
         <TrendingUp
-          className={`w-6 h-6 ${theme === "dark" ? "text-yellow-400" : "text-indigo-600"
-            }`}
+          className={`w-6 h-6 ${
+            theme === "dark" ? "text-yellow-400" : "text-indigo-600"
+          }`}
         />
         <h3
-          className={`font-bold text-lg ${theme === "dark" ? "text-white" : "text-indigo-900"
-            }`}
+          className={`font-bold text-lg ${
+            theme === "dark" ? "text-white" : "text-indigo-900"
+          }`}
         >
           Trending Topics
         </h3>
         <Sparkles
-          className={`w-4 h-4 ${theme === "dark" ? "text-yellow-400" : "text-purple-500"
-            }`}
+          className={`w-4 h-4 ${
+            theme === "dark" ? "text-yellow-400" : "text-purple-500"
+          }`}
         />
       </div>
       <div className="space-y-4">
         {trendingTopics.map((topic, i) => (
           <div
             key={i}
-            className={`p-4 rounded-xl transition-all duration-300 hover:scale-105 cursor-pointer ${theme === "dark"
-              ? "bg-white/5 hover:bg-white/10"
-              : "bg-indigo-50 hover:bg-indigo-100"
-              }`}
+            className={`p-4 rounded-xl transition-all duration-300 hover:scale-105 cursor-pointer ${
+              theme === "dark"
+                ? "bg-white/5 hover:bg-white/10"
+                : "bg-indigo-50 hover:bg-indigo-100"
+            }`}
           >
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-3">
                 <span className="text-2xl">{topic.icon}</span>
                 <div>
                   <p
-                    className={`font-bold ${theme === "dark" ? "text-white" : "text-indigo-900"
-                      }`}
+                    className={`font-bold ${
+                      theme === "dark" ? "text-white" : "text-indigo-900"
+                    }`}
                   >
                     {topic.name}
                   </p>
                   <p
-                    className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-indigo-600"
-                      }`}
+                    className={`text-sm ${
+                      theme === "dark" ? "text-gray-400" : "text-indigo-600"
+                    }`}
                   >
                     {topic.posts} posts
                   </p>
@@ -1905,8 +1995,9 @@ const Discussions = () => {
               </span>
             </div>
             <div
-              className={`w-full h-2 rounded-full ${theme === "dark" ? "bg-white/10" : "bg-indigo-200"
-                }`}
+              className={`w-full h-2 rounded-full ${
+                theme === "dark" ? "bg-white/10" : "bg-indigo-200"
+              }`}
             >
               <div
                 className={`h-full rounded-full bg-gradient-to-r ${topic.color}`}
@@ -1924,19 +2015,22 @@ const Discussions = () => {
   // Enhanced Recent Activity Component
   const RecentActivity = () => (
     <div
-      className={`backdrop-blur-xl rounded-2xl p-6 border transition-all duration-300 hover:shadow-lg ${theme === "dark"
-        ? "bg-white/5 border-white/10"
-        : "bg-white border-indigo-200"
-        }`}
+      className={`backdrop-blur-xl rounded-2xl p-6 border transition-all duration-300 hover:shadow-lg ${
+        theme === "dark"
+          ? "bg-white/5 border-white/10"
+          : "bg-white border-indigo-200"
+      }`}
     >
       <div className="flex items-center gap-2 mb-6">
         <Activity
-          className={`w-6 h-6 ${theme === "dark" ? "text-green-400" : "text-green-600"
-            }`}
+          className={`w-6 h-6 ${
+            theme === "dark" ? "text-green-400" : "text-green-600"
+          }`}
         />
         <h3
-          className={`font-bold text-lg ${theme === "dark" ? "text-white" : "text-indigo-900"
-            }`}
+          className={`font-bold text-lg ${
+            theme === "dark" ? "text-white" : "text-indigo-900"
+          }`}
         >
           Recent Activity
         </h3>
@@ -1946,21 +2040,24 @@ const Discussions = () => {
         {recentActivity.map((activity, i) => (
           <div
             key={i}
-            className={`flex items-start gap-3 p-3 rounded-xl transition-all duration-300 hover:scale-105 ${theme === "dark" ? "hover:bg-white/5" : "hover:bg-indigo-50"
-              }`}
+            className={`flex items-start gap-3 p-3 rounded-xl transition-all duration-300 hover:scale-105 ${
+              theme === "dark" ? "hover:bg-white/5" : "hover:bg-indigo-50"
+            }`}
           >
             <div
-              className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-white ${theme === "dark"
-                ? "bg-gradient-to-r from-purple-500 to-indigo-500"
-                : "bg-gradient-to-r from-indigo-600 to-purple-600"
-                }`}
+              className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-white ${
+                theme === "dark"
+                  ? "bg-gradient-to-r from-purple-500 to-indigo-500"
+                  : "bg-gradient-to-r from-indigo-600 to-purple-600"
+              }`}
             >
               {activity.avatar}
             </div>
             <div className="flex-1">
               <p
-                className={`text-sm ${theme === "dark" ? "text-gray-300" : "text-indigo-700"
-                  }`}
+                className={`text-sm ${
+                  theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                }`}
               >
                 <span className="font-bold">{activity.user}</span>{" "}
                 {activity.action}{" "}
@@ -1968,8 +2065,9 @@ const Discussions = () => {
               </p>
               <div className="flex items-center gap-2 mt-1">
                 <p
-                  className={`text-xs ${theme === "dark" ? "text-gray-500" : "text-gray-500"
-                    }`}
+                  className={`text-xs ${
+                    theme === "dark" ? "text-gray-500" : "text-gray-500"
+                  }`}
                 >
                   {activity.time}
                 </p>
@@ -1992,41 +2090,47 @@ const Discussions = () => {
   // Enhanced Online Users Component
   const OnlineUsers = () => (
     <div
-      className={`backdrop-blur-xl rounded-2xl p-6 border transition-all duration-300 hover:shadow-lg ${theme === "dark"
-        ? "bg-white/5 border-white/10"
-        : "bg-white border-indigo-200"
-        }`}
+      className={`backdrop-blur-xl rounded-2xl p-6 border transition-all duration-300 hover:shadow-lg ${
+        theme === "dark"
+          ? "bg-white/5 border-white/10"
+          : "bg-white border-indigo-200"
+      }`}
     >
       <div className="flex items-center gap-2 mb-6">
         <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
         <h3
-          className={`font-bold text-lg ${theme === "dark" ? "text-white" : "text-indigo-900"
-            }`}
+          className={`font-bold text-lg ${
+            theme === "dark" ? "text-white" : "text-indigo-900"
+          }`}
         >
           Online Now
         </h3>
         <Globe
-          className={`w-4 h-4 ${theme === "dark" ? "text-blue-400" : "text-blue-500"
-            }`}
+          className={`w-4 h-4 ${
+            theme === "dark" ? "text-blue-400" : "text-blue-500"
+          }`}
         />
       </div>
       <div className="text-center">
         <div
-          className={`text-4xl font-black mb-2 ${theme === "dark" ? "text-green-400" : "text-green-600"
-            }`}
+          className={`text-4xl font-black mb-2 ${
+            theme === "dark" ? "text-green-400" : "text-green-600"
+          }`}
         >
           {onlineUsers}
         </div>
         <p
-          className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-indigo-600"
-            }`}
+          className={`text-sm ${
+            theme === "dark" ? "text-gray-400" : "text-indigo-600"
+          }`}
         >
           Active users
         </p>
         <div className="mt-4 flex justify-center">
           <div
-            className={`w-full h-2 rounded-full ${theme === "dark" ? "bg-white/10" : "bg-indigo-200"
-              }`}
+            className={`w-full h-2 rounded-full ${
+              theme === "dark" ? "bg-white/10" : "bg-indigo-200"
+            }`}
           >
             <div
               className="h-full rounded-full bg-gradient-to-r from-green-400 to-blue-400 transition-all duration-1000"
@@ -2041,19 +2145,22 @@ const Discussions = () => {
   if (loading) {
     return (
       <div
-        className={`min-h-screen flex items-center justify-center ${theme === "dark"
-          ? "bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900"
-          : "bg-gradient-to-br from-indigo-50 via-white to-purple-50"
-          }`}
+        className={`min-h-screen flex items-center justify-center ${
+          theme === "dark"
+            ? "bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900"
+            : "bg-gradient-to-br from-indigo-50 via-white to-purple-50"
+        }`}
       >
         <div className="text-center">
           <Loader2
-            className={`w-12 h-12 animate-spin mx-auto mb-4 ${theme === "dark" ? "text-purple-400" : "text-indigo-600"
-              }`}
+            className={`w-12 h-12 animate-spin mx-auto mb-4 ${
+              theme === "dark" ? "text-purple-400" : "text-indigo-600"
+            }`}
           />
           <p
-            className={`text-lg font-medium ${theme === "dark" ? "text-white" : "text-indigo-900"
-              }`}
+            className={`text-lg font-medium ${
+              theme === "dark" ? "text-white" : "text-indigo-900"
+            }`}
           >
             Loading discussions...
           </p>
@@ -2064,40 +2171,46 @@ const Discussions = () => {
 
   return (
     <div
-      className={`min-h-screen transition-all duration-500 ${theme === "dark"
-        ? "bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900"
-        : "bg-gradient-to-br from-indigo-50 via-white to-purple-50"
-        }`}
+      className={`min-h-screen transition-all duration-500 ${
+        theme === "dark"
+          ? "bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900"
+          : "bg-gradient-to-br from-indigo-50 via-white to-purple-50"
+      }`}
     >
       {/* Enhanced Header */}
       <header
-        className={`sticky top-0 z-50 backdrop-blur-xl border-b transition-all duration-300 ${theme === "dark"
-          ? "bg-black/20 border-white/10"
-          : "bg-white/80 border-indigo-200"
-          }`}
+        className={`sticky top-0 z-50 backdrop-blur-xl border-b transition-all duration-300 ${
+          theme === "dark"
+            ? "bg-black/20 border-white/10"
+            : "bg-white/80 border-indigo-200"
+        }`}
       >
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
               <button
-                className={`p-2 rounded-xl transition-all duration-300 hover:scale-110 ${theme === "dark" ? "hover:bg-white/10" : "hover:bg-indigo-100"
-                  }`}
+                className={`p-2 rounded-xl transition-all duration-300 hover:scale-110 ${
+                  theme === "dark" ? "hover:bg-white/10" : "hover:bg-indigo-100"
+                }`}
               >
                 <ArrowLeft
-                  className={`w-6 h-6 ${theme === "dark" ? "text-white" : "text-indigo-900"
-                    }`}
+                  className={`w-6 h-6 ${
+                    theme === "dark" ? "text-white" : "text-indigo-900"
+                  }`}
                 />
               </button>
               <div>
                 <h1
-                  className={`text-3xl font-black ${theme === "dark" ? "text-white" : "text-indigo-900"
-                    }`}
+                  className={`text-3xl font-black ${
+                    theme === "dark" ? "text-white" : "text-indigo-900"
+                  }`}
                 >
                   Campus Discussions
                 </h1>
                 <p
-                  className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-indigo-600"
-                    }`}
+                  className={`text-sm ${
+                    theme === "dark" ? "text-gray-400" : "text-indigo-600"
+                  }`}
                 >
                   Connect, share, and learn together
                 </p>
@@ -2106,31 +2219,35 @@ const Discussions = () => {
             <div className="flex items-center gap-4">
               <div className="relative">
                 <Search
-                  className={`absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 ${theme === "dark" ? "text-gray-400" : "text-indigo-600"
-                    }`}
+                  className={`absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 ${
+                    theme === "dark" ? "text-gray-400" : "text-indigo-600"
+                  }`}
                 />
                 <input
                   type="text"
                   placeholder="Search discussions..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className={`pl-12 pr-4 py-3 rounded-2xl border transition-all duration-300 focus:outline-none focus:ring-2 focus:scale-105 w-80 ${theme === "dark"
-                    ? "bg-white/10 border-white/20 text-white placeholder-gray-400 focus:border-purple-400 focus:ring-purple-400/20"
-                    : "bg-white border-indigo-200 text-indigo-900 placeholder-indigo-400 focus:border-indigo-500 focus:ring-indigo-500/20"
-                    }`}
+                  className={`pl-12 pr-4 py-3 rounded-2xl border transition-all duration-300 focus:outline-none focus:ring-2 focus:scale-105 w-80 ${
+                    theme === "dark"
+                      ? "bg-white/10 border-white/20 text-white placeholder-gray-400 focus:border-purple-400 focus:ring-purple-400/20"
+                      : "bg-white border-indigo-200 text-indigo-900 placeholder-indigo-400 focus:border-indigo-500 focus:ring-indigo-500/20"
+                  }`}
                 />
               </div>
               <div className="relative">
                 <button
                   onClick={() => setShowNotifications(!showNotifications)}
-                  className={`p-3 rounded-xl transition-all duration-300 hover:scale-110 relative ${theme === "dark"
-                    ? "hover:bg-white/10"
-                    : "hover:bg-indigo-100"
-                    }`}
+                  className={`p-3 rounded-xl transition-all duration-300 hover:scale-110 relative ${
+                    theme === "dark"
+                      ? "hover:bg-white/10"
+                      : "hover:bg-indigo-100"
+                  }`}
                 >
                   <Bell
-                    className={`w-6 h-6 ${theme === "dark" ? "text-white" : "text-indigo-900"
-                      }`}
+                    className={`w-6 h-6 ${
+                      theme === "dark" ? "text-white" : "text-indigo-900"
+                    }`}
                   />
                   <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
                     <span className="text-xs text-white font-bold">
@@ -2140,31 +2257,35 @@ const Discussions = () => {
                 </button>
                 {showNotifications && (
                   <div
-                    className={`absolute right-0 top-full mt-2 w-96 backdrop-blur-xl rounded-2xl border shadow-2xl z-50 ${theme === "dark"
-                      ? "bg-black/80 border-white/20"
-                      : "bg-white/90 border-indigo-200"
-                      }`}
+                    className={`absolute right-0 top-full mt-2 w-96 backdrop-blur-xl rounded-2xl border shadow-2xl z-50 ${
+                      theme === "dark"
+                        ? "bg-black/80 border-white/20"
+                        : "bg-white/90 border-indigo-200"
+                    }`}
                   >
                     <div className="p-6">
                       <div className="flex items-center justify-between mb-4">
                         <h3
-                          className={`font-bold text-lg ${theme === "dark" ? "text-white" : "text-indigo-900"
-                            }`}
+                          className={`font-bold text-lg ${
+                            theme === "dark" ? "text-white" : "text-indigo-900"
+                          }`}
                         >
                           Notifications
                         </h3>
                         <button
                           onClick={() => setShowNotifications(false)}
-                          className={`p-2 rounded-lg transition-colors ${theme === "dark"
-                            ? "hover:bg-white/10"
-                            : "hover:bg-indigo-100"
-                            }`}
+                          className={`p-2 rounded-lg transition-colors ${
+                            theme === "dark"
+                              ? "hover:bg-white/10"
+                              : "hover:bg-indigo-100"
+                          }`}
                         >
                           <X
-                            className={`w-4 h-4 ${theme === "dark"
-                              ? "text-gray-400"
-                              : "text-indigo-600"
-                              }`}
+                            className={`w-4 h-4 ${
+                              theme === "dark"
+                                ? "text-gray-400"
+                                : "text-indigo-600"
+                            }`}
                           />
                         </button>
                       </div>
@@ -2172,30 +2293,33 @@ const Discussions = () => {
                         {notifications.map((notification) => (
                           <div
                             key={notification.id}
-                            className={`p-4 rounded-xl transition-all duration-300 hover:scale-105 cursor-pointer ${notification.unread
-                              ? theme === "dark"
-                                ? "bg-purple-900/30 border border-purple-500/30"
-                                : "bg-indigo-100 border border-indigo-300"
-                              : theme === "dark"
+                            className={`p-4 rounded-xl transition-all duration-300 hover:scale-105 cursor-pointer ${
+                              notification.unread
+                                ? theme === "dark"
+                                  ? "bg-purple-900/30 border border-purple-500/30"
+                                  : "bg-indigo-100 border border-indigo-300"
+                                : theme === "dark"
                                 ? "bg-white/5 hover:bg-white/10"
                                 : "bg-gray-50 hover:bg-gray-100"
-                              }`}
+                            }`}
                           >
                             <div className="flex items-start gap-3">
                               <div
-                                className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-white ${theme === "dark"
-                                  ? "bg-gradient-to-r from-purple-500 to-indigo-500"
-                                  : "bg-gradient-to-r from-indigo-600 to-purple-600"
-                                  }`}
+                                className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-white ${
+                                  theme === "dark"
+                                    ? "bg-gradient-to-r from-purple-500 to-indigo-500"
+                                    : "bg-gradient-to-r from-indigo-600 to-purple-600"
+                                }`}
                               >
                                 {notification.avatar}
                               </div>
                               <div className="flex-1">
                                 <p
-                                  className={`text-sm ${theme === "dark"
-                                    ? "text-gray-300"
-                                    : "text-indigo-700"
-                                    }`}
+                                  className={`text-sm ${
+                                    theme === "dark"
+                                      ? "text-gray-300"
+                                      : "text-indigo-700"
+                                  }`}
                                 >
                                   <span className="font-bold">
                                     {notification.user}
@@ -2203,10 +2327,11 @@ const Discussions = () => {
                                   {notification.message}
                                 </p>
                                 <p
-                                  className={`text-xs mt-1 ${theme === "dark"
-                                    ? "text-gray-500"
-                                    : "text-gray-500"
-                                    }`}
+                                  className={`text-xs mt-1 ${
+                                    theme === "dark"
+                                      ? "text-gray-500"
+                                      : "text-gray-500"
+                                  }`}
                                 >
                                   {notification.time}
                                 </p>
@@ -2224,8 +2349,9 @@ const Discussions = () => {
               </div>
               <button
                 onClick={toggleTheme}
-                className={`p-3 rounded-xl transition-all duration-300 hover:scale-110 ${theme === "dark" ? "hover:bg-white/10" : "hover:bg-indigo-100"
-                  }`}
+                className={`p-3 rounded-xl transition-all duration-300 hover:scale-110 ${
+                  theme === "dark" ? "hover:bg-white/10" : "hover:bg-indigo-100"
+                }`}
               >
                 {theme === "dark" ? (
                   <Sun className="w-6 h-6 text-yellow-400" />
@@ -2235,10 +2361,11 @@ const Discussions = () => {
               </button>
               <button
                 onClick={() => setShowCreateModal(true)}
-                className={`px-6 py-3 rounded-2xl font-bold transition-all duration-300 hover:scale-105 transform hover:shadow-xl ${theme === "dark"
-                  ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
-                  : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
-                  }`}
+                className={`px-6 py-3 rounded-2xl font-bold transition-all duration-300 hover:scale-105 transform hover:shadow-xl ${
+                  theme === "dark"
+                    ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
+                    : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+                }`}
               >
                 <Plus className="w-4 h-4 mr-2 inline" />
                 Create Post
@@ -2247,14 +2374,6 @@ const Discussions = () => {
           </div>
         </div>
       </header>
-      {showCreateModal && (
-  <CreatePostModal
-    setShowCreateModal={setShowCreateModal}
-    userCommunitiesID={userCommunitiesID} // array of community objects
-    theme={theme}
-  />
-)}
-
 
       {/* Enhanced Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-8">
@@ -2274,21 +2393,23 @@ const Discussions = () => {
               <>
                 <div className="space-y-6">
                   <div
-                    className={`flex items-center gap-2 p-2 rounded-2xl ${theme === "dark" ? "bg-white/10" : "bg-indigo-100"
-                      }`}
+                    className={`flex items-center gap-2 p-2 rounded-2xl ${
+                      theme === "dark" ? "bg-white/10" : "bg-indigo-100"
+                    }`}
                   >
                     {tabs.map((tab) => (
                       <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
-                        className={`px-6 py-3 rounded-xl font-bold transition-all duration-300 hover:scale-105 ${activeTab === tab
-                          ? theme === "dark"
-                            ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg"
-                            : "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg"
-                          : theme === "dark"
+                        className={`px-6 py-3 rounded-xl font-bold transition-all duration-300 hover:scale-105 ${
+                          activeTab === tab
+                            ? theme === "dark"
+                              ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg"
+                              : "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg"
+                            : theme === "dark"
                             ? "text-gray-300 hover:text-white hover:bg-white/10"
                             : "text-indigo-700 hover:text-indigo-900 hover:bg-white/50"
-                          }`}
+                        }`}
                       >
                         {tab}
                       </button>
@@ -2297,22 +2418,24 @@ const Discussions = () => {
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                       <Filter
-                        className={`w-5 h-5 ${theme === "dark" ? "text-gray-400" : "text-indigo-600"
-                          }`}
+                        className={`w-5 h-5 ${
+                          theme === "dark" ? "text-gray-400" : "text-indigo-600"
+                        }`}
                       />
                       <div className="flex items-center gap-2">
                         {filters.map((filter) => (
                           <button
                             key={filter}
                             onClick={() => setActiveFilter(filter)}
-                            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 hover:scale-105 ${activeFilter === filter
-                              ? theme === "dark"
-                                ? "bg-purple-600 text-white"
-                                : "bg-indigo-600 text-white"
-                              : theme === "dark"
+                            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 hover:scale-105 ${
+                              activeFilter === filter
+                                ? theme === "dark"
+                                  ? "bg-purple-600 text-white"
+                                  : "bg-indigo-600 text-white"
+                                : theme === "dark"
                                 ? "bg-white/10 text-gray-300 hover:bg-white/20"
                                 : "bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
-                              }`}
+                            }`}
                           >
                             {filter}
                           </button>
@@ -2321,16 +2444,18 @@ const Discussions = () => {
                     </div>
                     <div className="flex items-center gap-3">
                       <SortAsc
-                        className={`w-5 h-5 ${theme === "dark" ? "text-gray-400" : "text-indigo-600"
-                          }`}
+                        className={`w-5 h-5 ${
+                          theme === "dark" ? "text-gray-400" : "text-indigo-600"
+                        }`}
                       />
                       <select
                         value={sortBy}
                         onChange={(e) => setSortBy(e.target.value)}
-                        className={`px-4 py-2 rounded-xl border font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:scale-105 ${theme === "dark"
-                          ? "bg-white/10 border-white/20 text-white focus:border-purple-400 focus:ring-purple-400/20"
-                          : "bg-white border-indigo-200 text-indigo-900 focus:border-indigo-500 focus:ring-indigo-500/20"
-                          }`}
+                        className={`px-4 py-2 rounded-xl border font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:scale-105 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:border-purple-400 focus:ring-purple-400/20"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:border-indigo-500 focus:ring-indigo-500/20"
+                        }`}
                       >
                         {sortOptions.map((option) => (
                           <option
@@ -2351,22 +2476,25 @@ const Discussions = () => {
                   <div>
                     <div className="flex items-center gap-3 mb-6">
                       <Users
-                        className={`w-6 h-6 ${theme === "dark"
-                          ? "text-yellow-400"
-                          : "text-indigo-600"
-                          }`}
+                        className={`w-6 h-6 ${
+                          theme === "dark"
+                            ? "text-yellow-400"
+                            : "text-indigo-600"
+                        }`}
                       />
                       <h2
-                        className={`text-2xl font-black ${theme === "dark" ? "text-white" : "text-indigo-900"
-                          }`}
+                        className={`text-2xl font-black ${
+                          theme === "dark" ? "text-white" : "text-indigo-900"
+                        }`}
                       >
                         {activeTab} Communities
                       </h2>
                       <div
-                        className={`px-3 py-1 rounded-full text-sm font-bold ${theme === "dark"
-                          ? "bg-purple-600 text-white"
-                          : "bg-indigo-600 text-white"
-                          }`}
+                        className={`px-3 py-1 rounded-full text-sm font-bold ${
+                          theme === "dark"
+                            ? "bg-purple-600 text-white"
+                            : "bg-indigo-600 text-white"
+                        }`}
                       >
                         {communities.length}
                       </div>
@@ -2387,20 +2515,23 @@ const Discussions = () => {
                   <div>
                     <div className="flex items-center gap-3 mb-6">
                       <MessageSquare
-                        className={`w-6 h-6 ${theme === "dark" ? "text-blue-400" : "text-indigo-600"
-                          }`}
+                        className={`w-6 h-6 ${
+                          theme === "dark" ? "text-blue-400" : "text-indigo-600"
+                        }`}
                       />
                       <h2
-                        className={`text-2xl font-black ${theme === "dark" ? "text-white" : "text-indigo-900"
-                          }`}
+                        className={`text-2xl font-black ${
+                          theme === "dark" ? "text-white" : "text-indigo-900"
+                        }`}
                       >
                         Recent Discussions
                       </h2>
                       <div
-                        className={`px-3 py-1 rounded-full text-sm font-bold ${theme === "dark"
-                          ? "bg-blue-600 text-white"
-                          : "bg-blue-600 text-white"
-                          }`}
+                        className={`px-3 py-1 rounded-full text-sm font-bold ${
+                          theme === "dark"
+                            ? "bg-blue-600 text-white"
+                            : "bg-blue-600 text-white"
+                        }`}
                       >
                         {filteredDiscussions.length}
                       </div>

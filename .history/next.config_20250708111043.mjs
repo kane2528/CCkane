@@ -1,7 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  devIndicators: false,
+  devIndicators: {
+    buildActivity: false,
+  },
   images: {
     domains: ["example.com"], // Add any external image domains you use
   },
