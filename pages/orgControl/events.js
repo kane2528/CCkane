@@ -1,27 +1,40 @@
-"use client"
-import { useState, useEffect } from "react"
-import Navbar from "../components/navbar"
-import { Search, Plus, Edit, Trash2, Calendar, Clock, MapPin, Users, User, X, Save, Loader2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import Image from "next/image"
-import axios from "axios"
-import Cookies from "js-cookie"
+"use client";
+import { useState, useEffect } from "react";
+import Navbar from "../components/navbar";
+import {
+  Search,
+  Edit,
+  Trash2,
+  Calendar,
+  Clock,
+  MapPin,
+  Users,
+  User,
+  X,
+  Save,
+  Loader2,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import Image from "next/image";
+import axios from "axios";
+import Cookies from "js-cookie";
+import toast from "react-hot-toast";
 
 export default function EventsPage() {
-  const [theme, setTheme] = useState("dark")
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState("All")
-  const [showEventModal, setShowEventModal] = useState(false)
-  const [showEventDetails, setShowEventDetails] = useState(false)
-  const [selectedEvent, setSelectedEvent] = useState(null)
-  const [editingEvent, setEditingEvent] = useState(null)
-  const [events, setEvents] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [theme, setTheme] = useState("dark");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [showEventDetails, setShowEventDetails] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [editingEvent, setEditingEvent] = useState(null);
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark")
-  }
+    setTheme(theme === "dark" ? "light" : "dark");
+  };
 
   const categories = [
     "All",
@@ -33,18 +46,21 @@ export default function EventsPage() {
     "Networking",
     "Sports",
     "Cultural",
-  ]
+  ];
+
+  const eventTypes = ["Offline", "Online"];
 
   // API Configuration
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3006/api/event"
+  const API_BASE_URL =
+    process.env.NEXT_PUBLIC_API_URL || "http://localhost:3006/api/event";
 
   // Get auth token from localStorage or your auth context
   const getAuthToken = () => {
     if (typeof window !== "undefined") {
-      return Cookies.get("token")
+      return Cookies.get("token");
     }
-    return null
-  }
+    return null;
+  };
 
   // Axios instance with auth header
   const apiClient = axios.create({
@@ -52,55 +68,82 @@ export default function EventsPage() {
     headers: {
       "Content-Type": "application/json",
     },
-  })
+  });
 
   // Add auth token to requests
   apiClient.interceptors.request.use((config) => {
-    const token = getAuthToken()
+    const token = getAuthToken();
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`
+      config.headers.Authorization = `Bearer ${token}`;
     }
-    return config
-  })
+    return config;
+  });
 
   // Helper function to safely extract string values
   const safeString = (value) => {
-    if (typeof value === "string") return value
+    if (typeof value === "string") return value;
     if (typeof value === "object" && value !== null) {
       // Handle location object
-      if (value.locationDetails) return value.locationDetails
-      if (value.type && value.locationDetails) return `${value.type}: ${value.locationDetails}`
+      if (value.locationDetails) return value.locationDetails;
+      if (value.type && value.locationDetails)
+        return `${value.type}: ${value.locationDetails}`;
       // Handle other object types
-      if (value.name) return value.name
-      if (value.title) return value.title
+      if (value.name) return value.name;
+      if (value.title) return value.title;
       // Convert object to string as fallback
-      return JSON.stringify(value)
+      return JSON.stringify(value);
     }
-    return value ? String(value) : ""
-  }
+    return value ? String(value) : "";
+  };
 
   // Helper function to safely extract array values
   const safeArray = (value) => {
-    if (Array.isArray(value)) return value
-    if (typeof value === "string") return value.split(",").map((item) => item.trim())
-    return []
-  }
+    if (Array.isArray(value)) return value;
+    if (typeof value === "string")
+      return value.split(",").map((item) => item.trim());
+    return [];
+  };
 
   // Fetch events from API
   const fetchEvents = async () => {
     try {
       setLoading(true);
       setError(null);
-  
       const response = await apiClient.get("/get-upcoming-events");
-  
       if (response.data && response.data.events) {
         const transformedEvents = response.data.events.map((event) => ({
           id: event._id,
-          type: safeString(event.eventType?.type) || "General",
-          name: safeString(event.title),
+          title: safeString(event.title),
+          name: safeString(event.title), // Keep for backward compatibility
           description: safeString(event.description),
-          date: event.eventDate ? new Date(event.eventDate).toISOString().split("T")[0] : "",
+          category: safeString(event.category),
+          eventDate: event.eventDate
+            ? new Date(event.eventDate).toISOString().split("T")[0]
+            : "",
+          eventStart: event.eventStart
+            ? new Date(event.eventStart).toTimeString().slice(0, 5)
+            : "",
+          eventEnd: event.eventEnd
+            ? new Date(event.eventEnd).toTimeString().slice(0, 5)
+            : "",
+          registrationDeadline: event.registrationDeadline
+            ? new Date(event.registrationDeadline).toISOString().slice(0, 16)
+            : "",
+          maxParticipants: event.maxParticipants || 0,
+          tags: safeArray(event.tags),
+          bannerImage:
+            safeString(event.bannerImage) ||
+            "/placeholder.svg?height=200&width=400",
+          hostedBy: safeString(event.organiser?.name) || "Unknown Organizer",
+          eventType: {
+            type: safeString(event.eventType?.type) || "offline",
+            locationDetails: safeString(event.eventType?.locationDetails) || "",
+          },
+          // Additional fields for display
+          type: safeString(event.eventType?.type) || "General",
+          date: event.eventDate
+            ? new Date(event.eventDate).toISOString().split("T")[0]
+            : "",
           time:
             event.eventStart && event.eventEnd
               ? `${new Date(event.eventStart).toLocaleTimeString([], {
@@ -111,9 +154,10 @@ export default function EventsPage() {
                   minute: "2-digit",
                 })}`
               : "TBD",
-          location: safeString(event.eventType?.locationDetails || event.locationDetails),
+          location: safeString(
+            event.eventType?.locationDetails || event.locationDetails
+          ),
           attendees: event.participants?.length || 0,
-          maxParticipants: event.maxParticipants || 0,
           organizer: safeString(event.organiser?.name) || "Unknown Organizer",
           organizerHead: safeString(event.organiser?.head?.name),
           organizerEmail: safeString(event.organiser?.head?.email),
@@ -122,8 +166,9 @@ export default function EventsPage() {
           registrationEnd: event.registrationDeadline
             ? new Date(event.registrationDeadline).toISOString().split("T")[0]
             : "",
-          banner: safeString(event.bannerImage) || "/placeholder.svg?height=200&width=400",
-          tags: safeArray(event.tags),
+          banner:
+            safeString(event.bannerImage) ||
+            "/placeholder.svg?height=200&width=400",
           requirements: safeString(event.requirements),
           contact: safeString(event.organiser?.head?.email),
           fee: event.registrationFee ? `₹${event.registrationFee}` : "Free",
@@ -134,30 +179,41 @@ export default function EventsPage() {
           sponsors: safeArray(event.sponsors),
           agenda: safeString(event.agenda),
         }));
-  
         setEvents(transformedEvents);
       }
     } catch (err) {
       console.error("Error fetching events:", err);
       setError(err.response?.data?.message || "Failed to fetch events");
-  
       // Optional fallback
       setEvents([
         {
           id: 1,
-          type: "Technology",
+          title: "AI & Machine Learning Summit",
           name: "AI & Machine Learning Summit",
-          description: "Join industry experts for a comprehensive discussion on the latest AI trends.",
+          description:
+            "Join industry experts for a comprehensive discussion on the latest AI trends.",
+          category: "Technology",
+          eventDate: "2025-07-10",
+          eventStart: "10:00",
+          eventEnd: "13:00",
+          registrationDeadline: "2025-07-09T23:59",
+          maxParticipants: 500,
+          tags: ["AI", "ML", "Innovation"],
+          bannerImage: "/placeholder.svg?height=200&width=400",
+          hostedBy: "Tech Innovation Club",
+          eventType: {
+            type: "offline",
+            locationDetails: "IIT Delhi, New Delhi",
+          },
+          type: "Technology",
           date: "2025-07-10",
           time: "10:00 AM - 01:00 PM",
           location: "IIT Delhi, New Delhi",
           attendees: 0,
-          maxParticipants: 500,
           organizer: "Tech Innovation Club",
           registrationStart: "2025-06-01",
           registrationEnd: "2025-07-09",
           banner: "/placeholder.svg?height=200&width=400",
-          tags: ["AI", "ML", "Innovation"],
           requirements: "Basic programming",
           contact: "tech@iitdelhi.ac.in",
           fee: "Free",
@@ -173,154 +229,209 @@ export default function EventsPage() {
       setLoading(false);
     }
   };
-  
 
   // Load events on component mount
   useEffect(() => {
-    fetchEvents()
-  }, [])
+    fetchEvents();
+  }, []);
 
-  const [newEvent, setNewEvent] = useState({
-    type: "Technology",
-    name: "",
+  const handleDeleteEvent = async (eventId) => {
+    const token = getAuthToken();
+    try {
+      const response = await axios.delete(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:3006/api"
+        }/event/delete-event`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          params: {
+            eventId,
+          },
+        }
+      );
+      // Refresh events after successful deletion
+      await fetchEvents();
+      return response.data;
+    } catch (error) {
+      console.error(
+        "Delete Event Error:",
+        error.response?.data || error.message
+      );
+      setError(error.response?.data?.message || "Failed to delete event");
+      throw (
+        error.response?.data ||
+        new Error("An error occurred while deleting the event.")
+      );
+    }
+  };
+
+  // Initialize editing event state
+  const [editingEventData, setEditingEventData] = useState({
+    title: "",
     description: "",
-    date: "",
-    time: "",
-    location: "",
+    category: "Technology",
+    eventDate: "",
+    eventStart: "",
+    eventEnd: "",
+    registrationDeadline: "",
     maxParticipants: "",
-    organizer: "",
-    registrationStart: "",
-    registrationEnd: "",
     tags: "",
-    requirements: "",
-    contact: "",
-    fee: "",
-  })
+    bannerImage: "",
+    hostedBy: "",
+    eventType: {
+      type: "offline",
+      locationDetails: "",
+    },
+  });
 
   // Filter events based on search and category
   const filteredEvents = events.filter((event) => {
-    const searchableText = [event.name, event.description, event.organizer, event.location].join(" ").toLowerCase()
-
-    const matchesSearch = searchableText.includes(searchQuery.toLowerCase())
-    const matchesCategory = selectedCategory === "All" || event.type === selectedCategory
-    return matchesSearch && matchesCategory
-  })
-
-  const handleAddEvent = async () => {
-    if (newEvent.name && newEvent.description && newEvent.date) {
-      try {
-        // Prepare data for API
-        const eventData = {
-            title: newEvent.name,
-            description: newEvent.description,
-            category: newEvent.category,
-            eventDate: newEvent.date,
-            eventStart: newEvent.time?.start,
-            eventEnd: newEvent.time?.end,
-            eventType: {
-              type: newEvent.type,
-              locationDetails: newEvent.location
-            },
-            registrationDeadline: newEvent.registrationEnd,
-            maxParticipants: Number.parseInt(newEvent.maxParticipants) || 0,
-            tags: newEvent.tags.split(",").map(tag => tag.trim()),
-            bannerImage: newEvent.bannerImage || "", // If you support image upload later
-          };
-
-        // Make API call to create event
-        const response = await apiClient.post(`/add-event/${organisationId}`, eventData)
-        if (response.data) {
-          // Refresh events list
-          await fetchEvents()
-          // Reset form
-          setNewEvent({
-            type: "Technology",
-            name: "",
-            description: "",
-            date: "",
-            time: "",
-            location: "",
-            maxParticipants: "",
-            organizer: "",
-            registrationStart: "",
-            registrationEnd: "",
-            tags: "",
-            requirements: "",
-            contact: "",
-            fee: "",
-          })
-          setShowEventModal(false)
-        }
-      } catch (err) {
-        console.error("Error creating event:", err)
-        setError(err.response?.data?.message || "Failed to create event")
-      }
-    }
-  }
+    const searchableText = [
+      event.name,
+      event.description,
+      event.organizer,
+      event.location,
+    ]
+      .join(" ")
+      .toLowerCase();
+    const matchesSearch = searchableText.includes(searchQuery.toLowerCase());
+    const matchesCategory =
+      selectedCategory === "All" || event.type === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
 
   const handleEditEvent = (event) => {
-    setEditingEvent({
-      ...event,
-      tags: Array.isArray(event.tags) ? event.tags.join(", ") : "",
-    })
-    setShowEventModal(true)
-  }
+    setEditingEvent(event);
+    setEditingEventData({
+      title: event.title || event.name || "",
+      description: event.description || "",
+      category: event.category || event.eventCategory || "Technology",
+      eventDate: event.eventDate || event.date || "",
+      eventStart: event.eventStart || "",
+      eventEnd: event.eventEnd || "",
+      registrationDeadline: event.registrationDeadline || "",
+      maxParticipants: event.maxParticipants?.toString() || "",
+      tags: Array.isArray(event.tags)
+        ? event.tags.join(", ")
+        : event.tags || "",
+      bannerImage: event.bannerImage || event.banner || "",
+      hostedBy: event.hostedBy || event.organizer || "",
+      eventType: {
+        type: event.eventType?.type || event.eventMode || "offline",
+        locationDetails:
+          event.eventType?.locationDetails || event.location || "",
+      },
+    });
+    setShowEventModal(true);
+  };
 
   const handleUpdateEvent = async () => {
-    if (editingEvent.name && editingEvent.description && editingEvent.date) {
+    if (
+      editingEventData.title &&
+      editingEventData.description &&
+      editingEventData.eventDate
+    ) {
+      const eventStartDateTime = new Date(
+        `${editingEventData.eventDate}T${editingEventData.eventStart}`
+      );
+      const eventEndDateTime = new Date(
+        `${editingEventData.eventDate}T${editingEventData.eventEnd}`
+      );
+
       try {
         // Prepare data for API
         const eventData = {
-          eventName: editingEvent.name,
-          description: editingEvent.description,
-          eventDate: editingEvent.date,
-          eventTime: editingEvent.time,
-          venue: editingEvent.location,
-          maxParticipants: Number.parseInt(editingEvent.maxParticipants) || 0,
-          registrationStartDate: editingEvent.registrationStart,
-          registrationEndDate: editingEvent.registrationEnd,
-          eventType: editingEvent.type,
-          tags: editingEvent.tags.split(",").map((tag) => tag.trim()),
-          requirements: editingEvent.requirements,
-          contactEmail: editingEvent.contact,
-          registrationFee:
-            editingEvent.fee === "Free" ? 0 : Number.parseFloat(editingEvent.fee.replace(/[^\d.]/g, "")) || 0,
-        }
+          title: editingEventData.title,
+          description: editingEventData.description,
+          category: editingEventData.category,
+          eventDate: editingEventData.eventDate,
+          eventStart: eventStartDateTime,
+          eventEnd: eventEndDateTime,
+          registrationDeadline: editingEventData.registrationDeadline,
+          maxParticipants: editingEventData.maxParticipants
+            ? Number.parseInt(editingEventData.maxParticipants)
+            : 0,
+          tags: editingEventData.tags
+            ? editingEventData.tags
+                .split(",")
+                .map((tag) => tag.trim())
+                .filter((tag) => tag)
+            : [],
+          bannerImage: editingEventData.bannerImage,
+          hostedBy: editingEventData.hostedById, // ✅ Must be ObjectId
+          eventType: {
+            type:
+              editingEventData.eventType.type === "In-Person"
+                ? "Offline"
+                : editingEventData.eventType.type,
+            locationDetails: editingEventData.eventType.locationDetails,
+          },
+        };
 
         // Make API call to update event
-        const response = await apiClient.put(`/update-event/${editingEvent.id}`, eventData)
+        const response = await apiClient.put(
+          `/edit-event?eventId=${editingEvent.id}`,
+          eventData
+        );
         if (response.data) {
           // Refresh events list
-          await fetchEvents()
-          setEditingEvent(null)
-          setShowEventModal(false)
+          await fetchEvents();
+          setEditingEvent(null);
+          setEditingEventData({
+            title: "",
+            description: "",
+            category: "Technology",
+            eventDate: "",
+            eventStart: "",
+            eventEnd: "",
+            registrationDeadline: "",
+            maxParticipants: "",
+            tags: "",
+            bannerImage: "",
+            hostedBy: "",
+            eventType: {
+              type: "Offline",
+              locationDetails: "",
+            },
+          });
+          setShowEventModal(false);
         }
       } catch (err) {
-        console.error("Error updating event:", err)
-        setError(err.response?.data?.message || "Failed to update event")
+        console.error("Error updating event:", err);
+        setError(err.response?.data?.message || "Failed to update event");
       }
     }
-  }
-
-  const handleDeleteEvent = async (eventId) => {
-    if (window.confirm("Are you sure you want to delete this event?")) {
-      try {
-        await apiClient.delete(`/delete-event/${eventId}`)
-        // Refresh events list
-        await fetchEvents()
-      } catch (err) {
-        console.error("Error deleting event:", err)
-        setError(err.response?.data?.message || "Failed to delete event")
-      }
-    }
-  }
+  };
 
   const openEventDetails = (event) => {
-    setSelectedEvent(event)
-    setShowEventDetails(true)
-  }
+    setSelectedEvent(event);
+    setShowEventDetails(true);
+  };
 
-  const currentEvent = editingEvent || newEvent
+  const registerForEvent = async (eventId) => {
+    const token = getAuthToken();
+
+    try {
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_SITE_URL}/api/event/register-for-event/${eventId}`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      toast.success(response.data.message);
+      return response.data;
+    } catch (error) {
+      const errMsg = error?.response?.data?.message || "Something went wrong!";
+      toast.error(errMsg);
+      throw error.response?.data || { message: errMsg };
+    }
+  };
 
   // Loading state
   if (loading) {
@@ -340,11 +451,17 @@ export default function EventsPage() {
                 theme === "dark" ? "text-purple-400" : "text-indigo-600"
               }`}
             />
-            <p className={`text-lg ${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}>Loading events...</p>
+            <p
+              className={`text-lg ${
+                theme === "dark" ? "text-gray-300" : "text-indigo-700"
+              }`}
+            >
+              Loading events...
+            </p>
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -377,8 +494,13 @@ export default function EventsPage() {
                   Amazing Events
                 </span>
               </h1>
-              <p className={`text-xl max-w-2xl mx-auto ${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}>
-                Find and join events that match your interests, or create your own
+              <p
+                className={`text-xl max-w-2xl mx-auto ${
+                  theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                }`}
+              >
+                Find and join events that match your interests, or create your
+                own
               </p>
             </div>
 
@@ -392,7 +514,10 @@ export default function EventsPage() {
                 }`}
               >
                 <p className="font-medium">Error: {error}</p>
-                <button onClick={fetchEvents} className="mt-2 text-sm underline hover:no-underline">
+                <button
+                  onClick={fetchEvents}
+                  className="mt-2 text-sm underline hover:no-underline"
+                >
                   Try again
                 </button>
               </div>
@@ -418,17 +543,6 @@ export default function EventsPage() {
                   }`}
                 />
               </div>
-              <Button
-                onClick={() => setShowEventModal(true)}
-                className={`px-8 py-4 rounded-2xl font-bold text-lg transform hover:scale-105 ${
-                  theme === "dark"
-                    ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
-                    : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
-                }`}
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                Add Event
-              </Button>
             </div>
 
             {/* Category Filter */}
@@ -444,8 +558,8 @@ export default function EventsPage() {
                           ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white"
                           : "bg-gradient-to-r from-indigo-600 to-purple-600 text-white"
                         : theme === "dark"
-                          ? "bg-white/10 text-gray-300 hover:bg-white/20"
-                          : "bg-white/80 text-indigo-700 hover:bg-white border border-indigo-200"
+                        ? "bg-white/10 text-gray-300 hover:bg-white/20"
+                        : "bg-white/80 text-indigo-700 hover:bg-white border border-indigo-200"
                     }`}
                   >
                     {category}
@@ -469,10 +583,14 @@ export default function EventsPage() {
                   <div className="absolute top-4 left-4 z-10">
                     <span
                       className={`px-3 py-1 rounded-full text-sm font-bold ${
-                        theme === "dark" ? "bg-purple-900/80 text-purple-300" : "bg-indigo-100 text-indigo-700"
+                        theme === "dark"
+                          ? "bg-purple-900/80 text-purple-300"
+                          : "bg-indigo-100 text-indigo-700"
                       }`}
                     >
-                      {Array.isArray(event.tags) ? event.tags.join(", ") : event.tags}
+                      {Array.isArray(event.eventCategory)
+                        ? event.eventCategory.join(", ")
+                        : event.eventCategory}
                     </span>
                   </div>
 
@@ -513,42 +631,110 @@ export default function EventsPage() {
 
                   {/* Event Content */}
                   <div className="p-6">
-                    <h3 className={`text-xl font-bold mb-3 ${theme === "dark" ? "text-white" : "text-indigo-900"}`}>
+                    <h3
+                      className={`text-xl font-bold mb-3 ${
+                        theme === "dark" ? "text-white" : "text-indigo-900"
+                      }`}
+                    >
                       {event.name}
                     </h3>
                     <p
-                      className={`text-sm mb-4 line-clamp-2 ${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}
+                      className={`text-sm mb-4 line-clamp-2 ${
+                        theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                      }`}
                     >
                       {event.description}
                     </p>
                     <div className="space-y-2 mb-4">
                       <div className="flex items-center gap-2">
-                        <Calendar className={`w-4 h-4 ${theme === "dark" ? "text-purple-400" : "text-indigo-600"}`} />
-                        <span className={`text-sm ${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}>
-                          {event.date ? new Date(event.date).toLocaleDateString() : "Date TBD"}
+                        <Calendar
+                          className={`w-4 h-4 ${
+                            theme === "dark"
+                              ? "text-purple-400"
+                              : "text-indigo-600"
+                          }`}
+                        />
+                        <span
+                          className={`text-sm ${
+                            theme === "dark"
+                              ? "text-gray-300"
+                              : "text-indigo-700"
+                          }`}
+                        >
+                          {event.date
+                            ? new Date(event.date).toLocaleDateString()
+                            : "Date TBD"}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Clock className={`w-4 h-4 ${theme === "dark" ? "text-purple-400" : "text-indigo-600"}`} />
-                        <span className={`text-sm ${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}>
+                        <Clock
+                          className={`w-4 h-4 ${
+                            theme === "dark"
+                              ? "text-purple-400"
+                              : "text-indigo-600"
+                          }`}
+                        />
+                        <span
+                          className={`text-sm ${
+                            theme === "dark"
+                              ? "text-gray-300"
+                              : "text-indigo-700"
+                          }`}
+                        >
                           {event.time || "Time TBD"}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <MapPin className={`w-4 h-4 ${theme === "dark" ? "text-purple-400" : "text-indigo-600"}`} />
-                        <span className={`text-sm ${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}>
+                        <MapPin
+                          className={`w-4 h-4 ${
+                            theme === "dark"
+                              ? "text-purple-400"
+                              : "text-indigo-600"
+                          }`}
+                        />
+                        <span
+                          className={`text-sm ${
+                            theme === "dark"
+                              ? "text-gray-300"
+                              : "text-indigo-700"
+                          }`}
+                        >
                           {event.location || "Location TBD"}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Users className={`w-4 h-4 ${theme === "dark" ? "text-purple-400" : "text-indigo-600"}`} />
-                        <span className={`text-sm ${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}>
+                        <Users
+                          className={`w-4 h-4 ${
+                            theme === "dark"
+                              ? "text-purple-400"
+                              : "text-indigo-600"
+                          }`}
+                        />
+                        <span
+                          className={`text-sm ${
+                            theme === "dark"
+                              ? "text-gray-300"
+                              : "text-indigo-700"
+                          }`}
+                        >
                           {event.attendees} / {event.maxParticipants} attendees
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <User className={`w-4 h-4 ${theme === "dark" ? "text-purple-400" : "text-indigo-600"}`} />
-                        <span className={`text-sm ${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}>
+                        <User
+                          className={`w-4 h-4 ${
+                            theme === "dark"
+                              ? "text-purple-400"
+                              : "text-indigo-600"
+                          }`}
+                        />
+                        <span
+                          className={`text-sm ${
+                            theme === "dark"
+                              ? "text-gray-300"
+                              : "text-indigo-700"
+                          }`}
+                        >
                           Hosted by {event.organizer}
                         </span>
                       </div>
@@ -570,11 +756,25 @@ export default function EventsPage() {
 
             {filteredEvents.length === 0 && !loading && (
               <div className="text-center py-12">
-                <div className={`text-6xl mb-4 ${theme === "dark" ? "text-gray-600" : "text-gray-400"}`}>🔍</div>
-                <h3 className={`text-2xl font-bold mb-2 ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
+                <div
+                  className={`text-6xl mb-4 ${
+                    theme === "dark" ? "text-gray-600" : "text-gray-400"
+                  }`}
+                >
+                  🔍
+                </div>
+                <h3
+                  className={`text-2xl font-bold mb-2 ${
+                    theme === "dark" ? "text-gray-400" : "text-gray-600"
+                  }`}
+                >
                   No events found
                 </h3>
-                <p className={`text-lg ${theme === "dark" ? "text-gray-500" : "text-gray-500"}`}>
+                <p
+                  className={`text-lg ${
+                    theme === "dark" ? "text-gray-500" : "text-gray-500"
+                  }`}
+                >
                   Try adjusting your search terms or browse different categories
                 </p>
               </div>
@@ -583,367 +783,469 @@ export default function EventsPage() {
         </section>
       </div>
 
-      {/* Add/Edit Event Modal */}
-      {showEventModal && (
+      {/* Edit Event Modal */}
+      {showEventModal && editingEvent && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div
-            className={`max-w-2xl w-full max-h-[90vh] overflow-y-auto rounded-3xl border ${
-              theme === "dark" ? "bg-slate-900/95 border-white/20" : "bg-white/95 border-indigo-200"
+            className={`max-w-4xl w-full max-h-[90vh] overflow-y-auto rounded-3xl border ${
+              theme === "dark"
+                ? "bg-slate-900/95 border-white/20"
+                : "bg-white/95 border-indigo-200"
             }`}
           >
             <div className="p-8">
               <div className="flex items-center justify-between mb-6">
-                <h2 className={`text-2xl font-bold ${theme === "dark" ? "text-white" : "text-indigo-900"}`}>
-                  {editingEvent ? "Edit Event" : "Add New Event"}
+                <h2
+                  className={`text-2xl font-bold ${
+                    theme === "dark" ? "text-white" : "text-indigo-900"
+                  }`}
+                >
+                  Edit Event
                 </h2>
                 <button
                   onClick={() => {
-                    setShowEventModal(false)
-                    setEditingEvent(null)
+                    setShowEventModal(false);
+                    setEditingEvent(null);
+                    setEditingEventData({
+                      title: "",
+                      description: "",
+                      category: "Technology",
+                      eventDate: "",
+                      eventStart: "",
+                      eventEnd: "",
+                      registrationDeadline: "",
+                      maxParticipants: "",
+                      tags: "",
+                      bannerImage: "",
+                      hostedBy: "",
+                      eventType: {
+                        type: "Offline",
+                        locationDetails: "",
+                      },
+                    });
                   }}
                   className={`p-2 rounded-full hover:scale-110 transition-transform ${
-                    theme === "dark" ? "text-gray-400 hover:text-white" : "text-gray-600 hover:text-indigo-900"
+                    theme === "dark"
+                      ? "text-gray-400 hover:text-white"
+                      : "text-gray-600 hover:text-indigo-900"
                   }`}
                 >
                   <X className="w-6 h-6" />
                 </button>
               </div>
 
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label
-                      className={`block text-sm font-medium mb-2 ${
-                        theme === "dark" ? "text-gray-300" : "text-indigo-700"
-                      }`}
-                    >
-                      Event Type
-                    </label>
-                    <select
-                      value={currentEvent.type}
-                      onChange={(e) =>
-                        editingEvent
-                          ? setEditingEvent({ ...editingEvent, type: e.target.value })
-                          : setNewEvent({ ...newEvent, type: e.target.value })
-                      }
-                      className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
-                        theme === "dark"
-                          ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
-                          : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
-                      }`}
-                    >
-                      {categories.slice(1).map((category) => (
-                        <option key={category} value={category}>
-                          {category}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label
-                      className={`block text-sm font-medium mb-2 ${
-                        theme === "dark" ? "text-gray-300" : "text-indigo-700"
-                      }`}
-                    >
-                      Event Name *
-                    </label>
-                    <input
-                      type="text"
-                      value={currentEvent.name}
-                      onChange={(e) =>
-                        editingEvent
-                          ? setEditingEvent({ ...editingEvent, name: e.target.value })
-                          : setNewEvent({ ...newEvent, name: e.target.value })
-                      }
-                      className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
-                        theme === "dark"
-                          ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
-                          : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
-                      }`}
-                      placeholder="Enter event name"
-                    />
-                  </div>
-                </div>
-
+              <div className="space-y-6">
+                {/* Basic Information */}
                 <div>
-                  <label
-                    className={`block text-sm font-medium mb-2 ${
-                      theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                  <h3
+                    className={`text-lg font-bold mb-4 ${
+                      theme === "dark" ? "text-white" : "text-indigo-900"
                     }`}
                   >
-                    Description *
-                  </label>
-                  <textarea
-                    value={currentEvent.description}
-                    onChange={(e) =>
-                      editingEvent
-                        ? setEditingEvent({ ...editingEvent, description: e.target.value })
-                        : setNewEvent({ ...newEvent, description: e.target.value })
-                    }
-                    rows={3}
-                    className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
-                      theme === "dark"
-                        ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
-                        : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
-                    }`}
-                    placeholder="Enter event description"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
+                    Basic Information
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${
+                          theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                        }`}
+                      >
+                        Event Title *
+                      </label>
+                      <input
+                        type="text"
+                        value={editingEventData.title}
+                        onChange={(e) =>
+                          setEditingEventData({
+                            ...editingEventData,
+                            title: e.target.value,
+                          })
+                        }
+                        className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                        }`}
+                        placeholder="Enter event title"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${
+                          theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                        }`}
+                      >
+                        Category
+                      </label>
+                      <select
+                        value={editingEventData.category}
+                        onChange={(e) =>
+                          setEditingEventData({
+                            ...editingEventData,
+                            category: e.target.value,
+                          })
+                        }
+                        className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                        }`}
+                      >
+                        {categories.slice(1).map((category) => (
+                          <option key={category} value={category}>
+                            {category}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="mt-4">
                     <label
                       className={`block text-sm font-medium mb-2 ${
                         theme === "dark" ? "text-gray-300" : "text-indigo-700"
                       }`}
                     >
-                      Date *
+                      Description *
                     </label>
-                    <input
-                      type="date"
-                      value={currentEvent.date}
+                    <textarea
+                      value={editingEventData.description}
                       onChange={(e) =>
-                        editingEvent
-                          ? setEditingEvent({ ...editingEvent, date: e.target.value })
-                          : setNewEvent({ ...newEvent, date: e.target.value })
+                        setEditingEventData({
+                          ...editingEventData,
+                          description: e.target.value,
+                        })
                       }
+                      rows={3}
                       className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
                         theme === "dark"
                           ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
                           : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
                       }`}
-                    />
-                  </div>
-                  <div>
-                    <label
-                      className={`block text-sm font-medium mb-2 ${
-                        theme === "dark" ? "text-gray-300" : "text-indigo-700"
-                      }`}
-                    >
-                      Time
-                    </label>
-                    <input
-                      type="time"
-                      value={currentEvent.time}
-                      onChange={(e) =>
-                        editingEvent
-                          ? setEditingEvent({ ...editingEvent, time: e.target.value })
-                          : setNewEvent({ ...newEvent, time: e.target.value })
-                      }
-                      className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
-                        theme === "dark"
-                          ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
-                          : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
-                      }`}
+                      placeholder="Enter event description"
                     />
                   </div>
                 </div>
 
+                {/* Date and Time Information */}
                 <div>
-                  <label
-                    className={`block text-sm font-medium mb-2 ${
-                      theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                  <h3
+                    className={`text-lg font-bold mb-4 ${
+                      theme === "dark" ? "text-white" : "text-indigo-900"
                     }`}
                   >
-                    Location
-                  </label>
-                  <input
-                    type="text"
-                    value={currentEvent.location}
-                    onChange={(e) =>
-                      editingEvent
-                        ? setEditingEvent({ ...editingEvent, location: e.target.value })
-                        : setNewEvent({ ...newEvent, location: e.target.value })
-                    }
-                    className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
-                      theme === "dark"
-                        ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
-                        : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
-                    }`}
-                    placeholder="Enter event location"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label
-                      className={`block text-sm font-medium mb-2 ${
-                        theme === "dark" ? "text-gray-300" : "text-indigo-700"
-                      }`}
-                    >
-                      Max Participants
-                    </label>
-                    <input
-                      type="number"
-                      value={currentEvent.maxParticipants}
-                      onChange={(e) =>
-                        editingEvent
-                          ? setEditingEvent({ ...editingEvent, maxParticipants: e.target.value })
-                          : setNewEvent({ ...newEvent, maxParticipants: e.target.value })
-                      }
-                      className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
-                        theme === "dark"
-                          ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
-                          : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
-                      }`}
-                      placeholder="Enter max participants"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      className={`block text-sm font-medium mb-2 ${
-                        theme === "dark" ? "text-gray-300" : "text-indigo-700"
-                      }`}
-                    >
-                      Contact Email
-                    </label>
-                    <input
-                      type="email"
-                      value={currentEvent.contact}
-                      onChange={(e) =>
-                        editingEvent
-                          ? setEditingEvent({ ...editingEvent, contact: e.target.value })
-                          : setNewEvent({ ...newEvent, contact: e.target.value })
-                      }
-                      className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
-                        theme === "dark"
-                          ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
-                          : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
-                      }`}
-                      placeholder="Enter contact email"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label
-                      className={`block text-sm font-medium mb-2 ${
-                        theme === "dark" ? "text-gray-300" : "text-indigo-700"
-                      }`}
-                    >
-                      Registration Start
-                    </label>
-                    <input
-                      type="date"
-                      value={currentEvent.registrationStart}
-                      onChange={(e) =>
-                        editingEvent
-                          ? setEditingEvent({ ...editingEvent, registrationStart: e.target.value })
-                          : setNewEvent({ ...newEvent, registrationStart: e.target.value })
-                      }
-                      className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
-                        theme === "dark"
-                          ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
-                          : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
-                      }`}
-                    />
-                  </div>
-                  <div>
-                    <label
-                      className={`block text-sm font-medium mb-2 ${
-                        theme === "dark" ? "text-gray-300" : "text-indigo-700"
-                      }`}
-                    >
-                      Registration End
-                    </label>
-                    <input
-                      type="date"
-                      value={currentEvent.registrationEnd}
-                      onChange={(e) =>
-                        editingEvent
-                          ? setEditingEvent({ ...editingEvent, registrationEnd: e.target.value })
-                          : setNewEvent({ ...newEvent, registrationEnd: e.target.value })
-                      }
-                      className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
-                        theme === "dark"
-                          ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
-                          : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
-                      }`}
-                    />
+                    Date & Time
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${
+                          theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                        }`}
+                      >
+                        Event Date *
+                      </label>
+                      <input
+                        type="date"
+                        value={editingEventData.eventDate}
+                        onChange={(e) =>
+                          setEditingEventData({
+                            ...editingEventData,
+                            eventDate: e.target.value,
+                          })
+                        }
+                        className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                        }`}
+                      />
+                    </div>
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${
+                          theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                        }`}
+                      >
+                        Start Time *
+                      </label>
+                      <input
+                        type="time"
+                        value={editingEventData.eventStart}
+                        onChange={(e) =>
+                          setEditingEventData({
+                            ...editingEventData,
+                            eventStart: e.target.value,
+                          })
+                        }
+                        className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                        }`}
+                      />
+                    </div>
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${
+                          theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                        }`}
+                      >
+                        End Time *
+                      </label>
+                      <input
+                        type="time"
+                        value={editingEventData.eventEnd}
+                        onChange={(e) =>
+                          setEditingEventData({
+                            ...editingEventData,
+                            eventEnd: e.target.value,
+                          })
+                        }
+                        className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                        }`}
+                      />
+                    </div>
                   </div>
                 </div>
 
+                {/* Event Type and Location */}
                 <div>
-                  <label
-                    className={`block text-sm font-medium mb-2 ${
-                      theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                  <h3
+                    className={`text-lg font-bold mb-4 ${
+                      theme === "dark" ? "text-white" : "text-indigo-900"
                     }`}
                   >
-                    Tags (comma separated)
-                  </label>
-                  <input
-                    type="text"
-                    value={currentEvent.tags}
-                    onChange={(e) =>
-                      editingEvent
-                        ? setEditingEvent({ ...editingEvent, tags: e.target.value })
-                        : setNewEvent({ ...newEvent, tags: e.target.value })
-                    }
-                    className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
-                      theme === "dark"
-                        ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
-                        : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
-                    }`}
-                    placeholder="e.g., AI, Technology, Innovation"
-                  />
+                    Event Type & Location
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${
+                          theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                        }`}
+                      >
+                        Event Type *
+                      </label>
+                      <select
+                        value={editingEventData.eventType.type}
+                        onChange={(e) =>
+                          setEditingEventData({
+                            ...editingEventData,
+                            eventType: {
+                              ...editingEventData.eventType,
+                              type: e.target.value,
+                            },
+                          })
+                        }
+                        className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                        }`}
+                      >
+                        {eventTypes.map((type) => (
+                          <option key={type} value={type}>
+                            {type}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${
+                          theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                        }`}
+                      >
+                        Location Details *
+                      </label>
+                      <input
+                        type="text"
+                        value={editingEventData.eventType.locationDetails}
+                        onChange={(e) =>
+                          setEditingEventData({
+                            ...editingEventData,
+                            eventType: {
+                              ...editingEventData.eventType,
+                              locationDetails: e.target.value,
+                            },
+                          })
+                        }
+                        className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                        }`}
+                        placeholder={
+                          editingEventData.eventType.type === "Virtual"
+                            ? "Meeting link or platform"
+                            : editingEventData.eventType.type === "Hybrid"
+                            ? "Physical address + Meeting link"
+                            : "Physical address or venue"
+                        }
+                      />
+                    </div>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label
-                      className={`block text-sm font-medium mb-2 ${
-                        theme === "dark" ? "text-gray-300" : "text-indigo-700"
-                      }`}
-                    >
-                      Requirements
-                    </label>
-                    <input
-                      type="text"
-                      value={currentEvent.requirements}
-                      onChange={(e) =>
-                        editingEvent
-                          ? setEditingEvent({ ...editingEvent, requirements: e.target.value })
-                          : setNewEvent({ ...newEvent, requirements: e.target.value })
-                      }
-                      className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
-                        theme === "dark"
-                          ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
-                          : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
-                      }`}
-                      placeholder="Enter requirements"
-                    />
+                {/* Registration and Participation */}
+                <div>
+                  <h3
+                    className={`text-lg font-bold mb-4 ${
+                      theme === "dark" ? "text-white" : "text-indigo-900"
+                    }`}
+                  >
+                    Registration & Participation
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${
+                          theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                        }`}
+                      >
+                        Registration Deadline
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={editingEventData.registrationDeadline}
+                        onChange={(e) =>
+                          setEditingEventData({
+                            ...editingEventData,
+                            registrationDeadline: e.target.value,
+                          })
+                        }
+                        className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                        }`}
+                      />
+                    </div>
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${
+                          theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                        }`}
+                      >
+                        Max Participants
+                      </label>
+                      <input
+                        type="number"
+                        value={editingEventData.maxParticipants}
+                        onChange={(e) =>
+                          setEditingEventData({
+                            ...editingEventData,
+                            maxParticipants: e.target.value,
+                          })
+                        }
+                        className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                        }`}
+                        placeholder="Leave empty for unlimited"
+                        min="1"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label
-                      className={`block text-sm font-medium mb-2 ${
-                        theme === "dark" ? "text-gray-300" : "text-indigo-700"
-                      }`}
-                    >
-                      Registration Fee
-                    </label>
-                    <input
-                      type="text"
-                      value={currentEvent.fee}
-                      onChange={(e) =>
-                        editingEvent
-                          ? setEditingEvent({ ...editingEvent, fee: e.target.value })
-                          : setNewEvent({ ...newEvent, fee: e.target.value })
-                      }
-                      className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
-                        theme === "dark"
-                          ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
-                          : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
-                      }`}
-                      placeholder="e.g., Free, ₹500, $10"
-                    />
+                </div>
+
+                {/* Additional Information */}
+                <div>
+                  <h3
+                    className={`text-lg font-bold mb-4 ${
+                      theme === "dark" ? "text-white" : "text-indigo-900"
+                    }`}
+                  >
+                    Additional Information
+                  </h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${
+                          theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                        }`}
+                      >
+                        Tags
+                      </label>
+                      <input
+                        type="text"
+                        value={editingEventData.tags}
+                        onChange={(e) =>
+                          setEditingEventData({
+                            ...editingEventData,
+                            tags: e.target.value,
+                          })
+                        }
+                        className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                        }`}
+                        placeholder="Enter tags separated by commas (e.g., workshop, networking, tech)"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${
+                          theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                        }`}
+                      >
+                        Banner Image URL
+                      </label>
+                      <input
+                        type="url"
+                        value={editingEventData.bannerImage}
+                        onChange={(e) =>
+                          setEditingEventData({
+                            ...editingEventData,
+                            bannerImage: e.target.value,
+                          })
+                        }
+                        className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                        }`}
+                        placeholder="https://example.com/banner-image.jpg"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${
+                          theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                        }`}
+                      >
+                        Hosted By
+                      </label>
+                      <input
+                        type="text"
+                        value={editingEventData.hostedBy}
+                        onChange={(e) =>
+                          setEditingEventData({
+                            ...editingEventData,
+                            hostedBy: e.target.value,
+                          })
+                        }
+                        className={`w-full p-3 rounded-xl border focus:outline-none focus:ring-2 ${
+                          theme === "dark"
+                            ? "bg-white/10 border-white/20 text-white focus:ring-purple-400"
+                            : "bg-white border-indigo-200 text-indigo-900 focus:ring-indigo-500"
+                        }`}
+                        placeholder="Enter organizer name"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
 
               <div className="flex gap-4 mt-8">
                 <Button
-                  onClick={editingEvent ? handleUpdateEvent : handleAddEvent}
+                  onClick={handleUpdateEvent}
                   className={`flex-1 py-3 rounded-xl font-bold ${
                     theme === "dark"
                       ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
@@ -951,12 +1253,29 @@ export default function EventsPage() {
                   }`}
                 >
                   <Save className="w-5 h-5 mr-2" />
-                  {editingEvent ? "Update Event" : "Create Event"}
+                  Update Event
                 </Button>
                 <Button
                   onClick={() => {
-                    setShowEventModal(false)
-                    setEditingEvent(null)
+                    setShowEventModal(false);
+                    setEditingEvent(null);
+                    setEditingEventData({
+                      title: "",
+                      description: "",
+                      category: "Technology",
+                      eventDate: "",
+                      eventStart: "",
+                      eventEnd: "",
+                      registrationDeadline: "",
+                      maxParticipants: "",
+                      tags: "",
+                      bannerImage: "",
+                      hostedBy: "",
+                      eventType: {
+                        type: "Offline",
+                        locationDetails: "",
+                      },
+                    });
                   }}
                   variant="outline"
                   className={`px-8 py-3 rounded-xl font-bold border-2 ${
@@ -978,7 +1297,9 @@ export default function EventsPage() {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div
             className={`max-w-4xl w-full max-h-[90vh] overflow-y-auto rounded-3xl border ${
-              theme === "dark" ? "bg-slate-900/95 border-white/20" : "bg-white/95 border-indigo-200"
+              theme === "dark"
+                ? "bg-slate-900/95 border-white/20"
+                : "bg-white/95 border-indigo-200"
             }`}
           >
             <div className="relative">
@@ -1000,126 +1321,258 @@ export default function EventsPage() {
                 <div className="absolute bottom-4 left-4">
                   <span
                     className={`px-3 py-1 rounded-full text-sm font-bold ${
-                      theme === "dark" ? "bg-purple-900/80 text-purple-300" : "bg-indigo-100 text-indigo-700"
+                      theme === "dark"
+                        ? "bg-purple-900/80 text-purple-300"
+                        : "bg-indigo-100 text-indigo-700"
                     }`}
                   >
                     {selectedEvent.type}
                   </span>
                 </div>
               </div>
-
               <div className="p-8">
-                <h2 className={`text-3xl font-bold mb-4 ${theme === "dark" ? "text-white" : "text-indigo-900"}`}>
+                <h2
+                  className={`text-3xl font-bold mb-4 ${
+                    theme === "dark" ? "text-white" : "text-indigo-900"
+                  }`}
+                >
                   {selectedEvent.name}
                 </h2>
-                <p className={`text-lg mb-6 ${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}>
+                <p
+                  className={`text-lg mb-6 ${
+                    theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                  }`}
+                >
                   {selectedEvent.description}
                 </p>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                   <div className="space-y-4">
-                    <h3 className={`text-xl font-bold ${theme === "dark" ? "text-white" : "text-indigo-900"}`}>
+                    <h3
+                      className={`text-xl font-bold ${
+                        theme === "dark" ? "text-white" : "text-indigo-900"
+                      }`}
+                    >
                       Event Details
                     </h3>
                     <div className="space-y-3">
                       <div className="flex items-center gap-3">
-                        <Calendar className={`w-5 h-5 ${theme === "dark" ? "text-purple-400" : "text-indigo-600"}`} />
-                        <span className={`${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}>
-                          {selectedEvent.date ? new Date(selectedEvent.date).toLocaleDateString() : "Date TBD"}
+                        <Calendar
+                          className={`w-5 h-5 ${
+                            theme === "dark"
+                              ? "text-purple-400"
+                              : "text-indigo-600"
+                          }`}
+                        />
+                        <span
+                          className={`${
+                            theme === "dark"
+                              ? "text-gray-300"
+                              : "text-indigo-700"
+                          }`}
+                        >
+                          {selectedEvent.date
+                            ? new Date(selectedEvent.date).toLocaleDateString()
+                            : "Date TBD"}
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <Clock className={`w-5 h-5 ${theme === "dark" ? "text-purple-400" : "text-indigo-600"}`} />
-                        <span className={`${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}>
+                        <Clock
+                          className={`w-5 h-5 ${
+                            theme === "dark"
+                              ? "text-purple-400"
+                              : "text-indigo-600"
+                          }`}
+                        />
+                        <span
+                          className={`${
+                            theme === "dark"
+                              ? "text-gray-300"
+                              : "text-indigo-700"
+                          }`}
+                        >
                           {selectedEvent.time || "Time TBD"}
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <MapPin className={`w-5 h-5 ${theme === "dark" ? "text-purple-400" : "text-indigo-600"}`} />
-                        <span className={`${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}>
+                        <MapPin
+                          className={`w-5 h-5 ${
+                            theme === "dark"
+                              ? "text-purple-400"
+                              : "text-indigo-600"
+                          }`}
+                        />
+                        <span
+                          className={`${
+                            theme === "dark"
+                              ? "text-gray-300"
+                              : "text-indigo-700"
+                          }`}
+                        >
                           {selectedEvent.location || "Location TBD"}
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <Users className={`w-5 h-5 ${theme === "dark" ? "text-purple-400" : "text-indigo-600"}`} />
-                        <span className={`${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}>
-                          {selectedEvent.attendees} / {selectedEvent.maxParticipants} attendees
+                        <Users
+                          className={`w-5 h-5 ${
+                            theme === "dark"
+                              ? "text-purple-400"
+                              : "text-indigo-600"
+                          }`}
+                        />
+                        <span
+                          className={`${
+                            theme === "dark"
+                              ? "text-gray-300"
+                              : "text-indigo-700"
+                          }`}
+                        >
+                          {selectedEvent.attendees} /{" "}
+                          {selectedEvent.maxParticipants} attendees
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <User className={`w-5 h-5 ${theme === "dark" ? "text-purple-400" : "text-indigo-600"}`} />
-                        <span className={`${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}>
+                        <User
+                          className={`w-5 h-5 ${
+                            theme === "dark"
+                              ? "text-purple-400"
+                              : "text-indigo-600"
+                          }`}
+                        />
+                        <span
+                          className={`${
+                            theme === "dark"
+                              ? "text-gray-300"
+                              : "text-indigo-700"
+                          }`}
+                        >
                           Hosted by {selectedEvent.organizer}
                         </span>
                       </div>
                       {selectedEvent.organizerHead && (
                         <div className="ml-8">
-                          <span className={`text-sm ${theme === "dark" ? "text-gray-400" : "text-indigo-600"}`}>
+                          <span
+                            className={`text-sm ${
+                              theme === "dark"
+                                ? "text-gray-400"
+                                : "text-indigo-600"
+                            }`}
+                          >
                             Contact: {selectedEvent.organizerHead}
                           </span>
                         </div>
                       )}
                     </div>
                   </div>
-
                   <div className="space-y-4">
-                    <h3 className={`text-xl font-bold ${theme === "dark" ? "text-white" : "text-indigo-900"}`}>
+                    <h3
+                      className={`text-xl font-bold ${
+                        theme === "dark" ? "text-white" : "text-indigo-900"
+                      }`}
+                    >
                       Registration Info
                     </h3>
                     <div className="space-y-3">
                       <div>
                         <span
-                          className={`text-sm font-medium ${theme === "dark" ? "text-gray-400" : "text-indigo-600"}`}
+                          className={`text-sm font-medium ${
+                            theme === "dark"
+                              ? "text-gray-400"
+                              : "text-indigo-600"
+                          }`}
                         >
                           Registration Period
                         </span>
-                        <p className={`${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}>
+                        <p
+                          className={`${
+                            theme === "dark"
+                              ? "text-gray-300"
+                              : "text-indigo-700"
+                          }`}
+                        >
                           {selectedEvent.registrationStart
-                            ? new Date(selectedEvent.registrationStart).toLocaleDateString()
+                            ? new Date(
+                                selectedEvent.registrationStart
+                              ).toLocaleDateString()
                             : "TBD"}{" "}
                           to{" "}
                           {selectedEvent.registrationEnd
-                            ? new Date(selectedEvent.registrationEnd).toLocaleDateString()
+                            ? new Date(
+                                selectedEvent.registrationEnd
+                              ).toLocaleDateString()
                             : "TBD"}
                         </p>
                       </div>
                       <div>
                         <span
-                          className={`text-sm font-medium ${theme === "dark" ? "text-gray-400" : "text-indigo-600"}`}
+                          className={`text-sm font-medium ${
+                            theme === "dark"
+                              ? "text-gray-400"
+                              : "text-indigo-600"
+                          }`}
                         >
                           Registration Fee
                         </span>
-                        <p className={`${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}>
+                        <p
+                          className={`${
+                            theme === "dark"
+                              ? "text-gray-300"
+                              : "text-indigo-700"
+                          }`}
+                        >
                           {selectedEvent.fee}
                         </p>
                       </div>
                       <div>
                         <span
-                          className={`text-sm font-medium ${theme === "dark" ? "text-gray-400" : "text-indigo-600"}`}
+                          className={`text-sm font-medium ${
+                            theme === "dark"
+                              ? "text-gray-400"
+                              : "text-indigo-600"
+                          }`}
                         >
                           Requirements
                         </span>
-                        <p className={`${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}>
-                          {selectedEvent.requirements || "No specific requirements"}
+                        <p
+                          className={`${
+                            theme === "dark"
+                              ? "text-gray-300"
+                              : "text-indigo-700"
+                          }`}
+                        >
+                          {selectedEvent.requirements ||
+                            "No specific requirements"}
                         </p>
                       </div>
                       <div>
                         <span
-                          className={`text-sm font-medium ${theme === "dark" ? "text-gray-400" : "text-indigo-600"}`}
+                          className={`text-sm font-medium ${
+                            theme === "dark"
+                              ? "text-gray-400"
+                              : "text-indigo-600"
+                          }`}
                         >
                           Contact
                         </span>
-                        <p className={`${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}>
+                        <p
+                          className={`${
+                            theme === "dark"
+                              ? "text-gray-300"
+                              : "text-indigo-700"
+                          }`}
+                        >
                           {selectedEvent.contact}
                         </p>
                       </div>
                     </div>
                   </div>
                 </div>
-
                 {selectedEvent.tags && selectedEvent.tags.length > 0 && (
                   <div className="mb-6">
-                    <h3 className={`text-lg font-bold mb-3 ${theme === "dark" ? "text-white" : "text-indigo-900"}`}>
+                    <h3
+                      className={`text-lg font-bold mb-3 ${
+                        theme === "dark" ? "text-white" : "text-indigo-900"
+                      }`}
+                    >
                       Tags
                     </h3>
                     <div className="flex flex-wrap gap-2">
@@ -1127,7 +1580,9 @@ export default function EventsPage() {
                         <span
                           key={index}
                           className={`px-3 py-1 rounded-full text-sm font-medium ${
-                            theme === "dark" ? "bg-purple-900/50 text-purple-300" : "bg-indigo-100 text-indigo-700"
+                            theme === "dark"
+                              ? "bg-purple-900/50 text-purple-300"
+                              : "bg-indigo-100 text-indigo-700"
                           }`}
                         >
                           {tag}
@@ -1136,7 +1591,6 @@ export default function EventsPage() {
                     </div>
                   </div>
                 )}
-
                 <div className="flex gap-4">
                   <Button
                     className={`flex-1 py-3 rounded-xl font-bold ${
@@ -1144,6 +1598,7 @@ export default function EventsPage() {
                         ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
                         : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
                     }`}
+                    onClick={() => registerForEvent(selectedEvent.id)}
                   >
                     Register Now
                   </Button>
@@ -1165,5 +1620,5 @@ export default function EventsPage() {
         </div>
       )}
     </div>
-  )
+  );
 }

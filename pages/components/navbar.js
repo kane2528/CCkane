@@ -6,6 +6,8 @@ import { LogIn, Menu, X, Sun, Moon, Rocket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/router";
 import Cookies from "js-cookie";
+import axios from "axios";
+import toast from "react-hot-toast";
 
 export default function Navbar({ theme = "dark", onThemeToggle }) {
   const [hasMounted, setHasMounted] = useState(false);
@@ -13,6 +15,7 @@ export default function Navbar({ theme = "dark", onThemeToggle }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const router = useRouter();
+
   useEffect(() => {
     setHasMounted(true);
   }, []);
@@ -40,8 +43,39 @@ export default function Navbar({ theme = "dark", onThemeToggle }) {
   ];
 
   const isEventsPage = router.pathname === "/orgControl/events";
+  const isEventsPageHome = router.pathname === "/events";
   const isOrganizationsPage = router.pathname === "/orgControl/organizations";
   const isProfilePage = router.pathname === "/profile";
+
+  const logoutUser = async () => {
+    try {
+      const response = await axios.post(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:3006/api"
+        }/auth/logout`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      toast.success("Logout successful");
+      Cookies.remove("token", { path: "/" }); // Remove token cookie
+      console.log("Logout success:", response.data.message);
+      router.push("/");
+      return response.data;
+    } catch (error) {
+      console.error(
+        "Logout failed:",
+        error?.response?.data?.message || error.message
+      );
+      return {
+        success: false,
+        message: error?.response?.data?.message || "Logout failed",
+      };
+    }
+  };
 
   return (
     <>
@@ -126,8 +160,8 @@ export default function Navbar({ theme = "dark", onThemeToggle }) {
                   <Button
                     variant="ghost"
                     onClick={() => {
-                      Cookies.remove("token");
-                      router.push("/");
+                      // Cookies.remove("token");
+                      logoutUser();
                     }}
                     className={`relative px-6 py-3 rounded-xl font-medium transition-all duration-300 hover:scale-105 ${
                       theme === "dark"
@@ -240,7 +274,12 @@ export default function Navbar({ theme = "dark", onThemeToggle }) {
       </nav>
       <div
         className={`${
-          isEventsPage || isOrganizationsPage || isProfilePage ? "h-20" : "h-12"
+          isEventsPage ||
+          isOrganizationsPage ||
+          isProfilePage ||
+          isEventsPageHome
+            ? "h-20"
+            : "h-12"
         } w-full`}
       />
 
