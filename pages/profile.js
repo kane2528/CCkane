@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useEffect } from "react";
 import Navbar from "./components/navbar";
 import {
@@ -20,8 +19,20 @@ import {
   Eye,
   Save,
   X,
+  Play,
+  Plus,
+  Trash2,
+  Clock,
+  Phone,
+  Briefcase,
+  GraduationCap,
+  Link,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import axios from "axios";
 import Cookies from "js-cookie";
@@ -33,14 +44,15 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isAddingVideo, setIsAddingVideo] = useState(false);
+  const [organisationId, setOrganisationId] = useState("1"); 
 
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark");
   };
 
   // API Configuration
-  const API_BASE_URL =
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:3006/api";
+  const API_BASE_URL = process.env.NEXT_PUBLIC_SITE_URL;
 
   // Get auth token from localStorage or your auth context
   const getAuthToken = () => {
@@ -73,8 +85,10 @@ export default function ProfilePage() {
       setLoading(true);
       setError(null);
 
-      const response = await apiClient.get("/auth/profile");
+      const response = await apiClient.get("/api/auth/profile");
       const user = response?.data?.user;
+
+      setOrganisationId(user?.organisation?.[0]?._id || "1");
 
       const profileData = {
         // Basic user info
@@ -89,7 +103,7 @@ export default function ProfilePage() {
           "Passionate developer and tech enthusiast. Love building innovative solutions and connecting with like-minded people.",
         joinedDate: user?.createdAt || new Date().toISOString(),
         location: user?.preferredLocation || "Unknown",
-        
+
         mobile: user?.mobile || "",
         industry: user?.industry || "",
         interests: user?.interests || [],
@@ -154,12 +168,56 @@ export default function ProfilePage() {
   const tabs = [
     { id: "overview", label: "Overview", icon: User },
     { id: "posts", label: "Posts", icon: FileText },
+    { id: "videos", label: "Videos", icon: Play },
     { id: "communities", label: "Communities", icon: Users },
     { id: "saved", label: "Saved", icon: Bookmark },
     { id: "comments", label: "Comments", icon: MessageSquare },
     { id: "organizations", label: "Organizations", icon: Building },
     { id: "events", label: "Events", icon: Calendar },
   ];
+
+  const handleAddVideo = async (videoData) => {
+    try {
+      const token = getAuthToken(); // assume this exists
+      const form = new FormData();
+
+      form.append("title", videoData.title);
+      form.append("description", videoData.description);
+      form.append("event", videoData.event || "");
+      form.append("tags", videoData.tags || "");
+      form.append("isPublic", videoData.isPublic);
+      form.append("video", videoData.video); // the file
+
+      const response = await apiClient.post(
+        `/api/video/add-video/${organisationId}`,
+        form,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      if (response.status === 201) {
+        fetchUserProfile();
+        setIsAddingVideo(false);
+      }
+    } catch (error) {
+      console.error("Error adding video:", error);
+    }
+  };
+
+  const handleDeleteVideo = async (videoId) => {
+    try {
+      const response = await apiClient.delete(`/api/videos/${videoId}`);
+      if (response.status === 200) {
+        fetchUserProfile(); // Refresh profile data
+      }
+    } catch (error) {
+      console.error("Error deleting video:", error);
+    }
+  };
 
   // Loading state
   if (loading) {
@@ -753,6 +811,185 @@ export default function ProfilePage() {
               </div>
             )}
 
+            {/* Videos Tab */}
+            {activeTab === "videos" && (
+              <div
+                className={`backdrop-blur-xl rounded-3xl border p-6 ${
+                  theme === "dark"
+                    ? "bg-white/5 border-white/10"
+                    : "bg-white/80 border-indigo-200"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <h3
+                    className={`text-xl font-bold ${
+                      theme === "dark" ? "text-white" : "text-indigo-900"
+                    }`}
+                  >
+                    My Videos (
+                    {userProfile && userProfile.videos
+                      ? userProfile.videos.length
+                      : 0}
+                    )
+                  </h3>
+                  <Button
+                    onClick={() => setIsAddingVideo(true)}
+                    className={`px-4 py-2 rounded-xl font-bold ${
+                      theme === "dark"
+                        ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
+                        : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+                    }`}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Video
+                  </Button>
+                </div>
+
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {(userProfile?.videos && Array.isArray(userProfile.videos)
+                    ? userProfile.videos
+                    : []
+                  ).map((video) => (
+                    <Card
+                      key={video.id}
+                      className={`transition-all duration-300 hover:scale-[1.02] ${
+                        theme === "dark"
+                          ? "bg-white/5 border-white/10 hover:bg-white/10"
+                          : "bg-indigo-50 border-indigo-200 hover:bg-indigo-100"
+                      }`}
+                    >
+                      <CardHeader className="p-0">
+                        <div className="relative aspect-video rounded-t-lg overflow-hidden">
+                          <Image
+                            src={
+                              video.thumbnail ||
+                              "/placeholder.svg?height=180&width=320"
+                            }
+                            alt={video.title}
+                            width={320}
+                            height={180}
+                            className="object-cover w-full h-full"
+                          />
+                          <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                            <Play className="w-12 h-12 text-white" />
+                          </div>
+                          {video.duration && (
+                            <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                              {video.duration}
+                            </div>
+                          )}
+                        </div>
+                      </CardHeader>
+                      <CardContent className="p-4">
+                        <CardTitle
+                          className={`text-lg font-bold mb-2 line-clamp-2 ${
+                            theme === "dark" ? "text-white" : "text-indigo-900"
+                          }`}
+                        >
+                          {video.title}
+                        </CardTitle>
+                        {video.description && (
+                          <p
+                            className={`text-sm mb-3 line-clamp-2 ${
+                              theme === "dark"
+                                ? "text-gray-300"
+                                : "text-gray-700"
+                            }`}
+                          >
+                            {video.description}
+                          </p>
+                        )}
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-4">
+                            {video.views && (
+                              <div className="flex items-center gap-1">
+                                <Eye
+                                  className={`w-4 h-4 ${
+                                    theme === "dark"
+                                      ? "text-gray-400"
+                                      : "text-gray-600"
+                                  }`}
+                                />
+                                <span
+                                  className={`${
+                                    theme === "dark"
+                                      ? "text-gray-400"
+                                      : "text-gray-600"
+                                  }`}
+                                >
+                                  {video.views}
+                                </span>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-1">
+                              <Clock
+                                className={`w-4 h-4 ${
+                                  theme === "dark"
+                                    ? "text-gray-400"
+                                    : "text-gray-600"
+                                }`}
+                              />
+                              <span
+                                className={`${
+                                  theme === "dark"
+                                    ? "text-gray-400"
+                                    : "text-gray-600"
+                                }`}
+                              >
+                                {new Date(
+                                  video.uploadDate
+                                ).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteVideo(video.id)}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+
+                {userProfile?.videos &&
+                  Array.isArray(userProfile.videos) &&
+                  userProfile.videos.length === 0 && (
+                    <div className="text-center py-12">
+                      <Play
+                        className={`w-16 h-16 mx-auto mb-4 ${
+                          theme === "dark" ? "text-gray-600" : "text-gray-400"
+                        }`}
+                      />
+                      <h4
+                        className={`text-xl font-bold mb-2 ${
+                          theme === "dark" ? "text-gray-400" : "text-gray-600"
+                        }`}
+                      >
+                        No videos yet
+                      </h4>
+                      <p
+                        className={`text-lg mb-4 ${
+                          theme === "dark" ? "text-gray-500" : "text-gray-500"
+                        }`}
+                      >
+                        Start sharing your videos with the community
+                      </p>
+                      <Button
+                        onClick={() => setIsAddingVideo(true)}
+                        className="px-6 py-2"
+                      >
+                        Add Your First Video
+                      </Button>
+                    </div>
+                  )}
+              </div>
+            )}
+
             {/* Communities Tab */}
             {activeTab === "communities" && (
               <div
@@ -1143,6 +1380,14 @@ export default function ProfilePage() {
         }}
         theme={theme}
       />
+
+      {/* Add Video Modal */}
+      <AddVideoModal
+        isOpen={isAddingVideo}
+        onClose={() => setIsAddingVideo(false)}
+        onAdd={handleAddVideo}
+        theme={theme}
+      />
     </div>
   );
 }
@@ -1314,8 +1559,8 @@ function EditProfileModal({ isOpen, onClose, userProfile, onUpdate, theme }) {
 
       const response = await axios.put(
         `${
-          process.env.NEXT_PUBLIC_API_URL || "http://localhost:3006/api"
-        }/auth/edit-profile`,
+          process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3006/"
+        }/api/auth/edit-profile`,
         {
           name: formData.name,
           mobile: formData.mobile,
@@ -2016,6 +2261,260 @@ function EditProfileModal({ isOpen, onClose, userProfile, onUpdate, theme }) {
                   <>
                     <Save className="w-5 h-5 mr-2" />
                     Update Profile
+                  </>
+                )}
+              </Button>
+              <Button
+                type="button"
+                onClick={onClose}
+                variant="outline"
+                className={`px-8 py-3 rounded-xl font-bold border-2 ${
+                  theme === "dark"
+                    ? "border-white/20 text-indigo-700 hover:bg-white/10"
+                    : "border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                }`}
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AddVideoModal({ isOpen, onClose, onAdd, theme }) {
+  const [formData, setFormData] = useState({
+    // title: "",
+    // url: "",
+    // description: "",
+    // thumbnail: "",
+    title: "",
+    description: "",
+    event: "", // optional
+    tags: "", // comma-separated
+    isPublic: true, // or false
+    video: null, // file upload
+  });
+  const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+
+  const validateForm = () => {
+    const newErrors = {};
+  
+    if (!formData.title.trim()) {
+      newErrors.title = "Title is required";
+    }
+  
+    if (!formData.video) {
+      newErrors.video = "Video file is required";
+    }
+  
+    if (formData.thumbnail && formData.thumbnail.trim()) {
+      try {
+        new URL(formData.thumbnail);
+      } catch {
+        newErrors.thumbnail = "Please enter a valid thumbnail URL";
+      }
+    }
+  
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+  
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+
+    setLoading(true);
+    try {
+      await onAdd({
+        title: formData.title,
+        description: formData.description,
+        event: formData.event,
+        tags: formData.tags,
+        isPublic: formData.isPublic,
+        video: formData.video,
+      });
+      setFormData({ title: "", url: "", description: "", thumbnail: "" });
+      setErrors({});
+    } catch (error) {
+      setErrors({ submit: "Failed to add video" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleInputChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: "" }));
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div
+        className={`max-w-2xl w-full rounded-3xl border ${
+          theme === "dark"
+            ? "bg-slate-900/95 border-white/20"
+            : "bg-white/95 border-indigo-200"
+        }`}
+      >
+        <div className="p-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2
+              className={`text-2xl font-bold ${
+                theme === "dark" ? "text-white" : "text-indigo-900"
+              }`}
+            >
+              Add Video
+            </h2>
+            <button
+              onClick={onClose}
+              className={`p-2 rounded-full hover:scale-110 transition-transform ${
+                theme === "dark"
+                  ? "text-gray-400 hover:text-white"
+                  : "text-gray-600 hover:text-indigo-900"
+              }`}
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label
+                className={`block text-sm font-medium mb-2 ${
+                  theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                }`}
+              >
+                Title *
+              </label>
+              <Input
+                type="text"
+                value={formData.title}
+                onChange={(e) => handleInputChange("title", e.target.value)}
+                className={`w-full ${errors.title ? "border-red-500" : ""} ${
+                  theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                } `}
+                placeholder="Enter video title"
+              />
+              {errors.title && (
+                <p className="text-red-500 text-sm mt-1">{errors.title}</p>
+              )}
+            </div>
+
+            <div>
+              {/* <label
+                className={`block text-sm font-medium mb-2 ${
+                  theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                }`}
+              >
+                Video URL *
+              </label>
+              <Input
+                type="url"
+                value={formData.url}
+                onChange={(e) => handleInputChange("url", e.target.value)}
+                className={`w-full ${errors.url ? "border-red-500" : ""}`}
+                placeholder="https://youtube.com/watch?v=..."
+              />
+              {errors.url && (
+                <p className="text-red-500 text-sm mt-1">{errors.url}</p>
+              )} */}
+              <label
+                className={`block text-sm font-medium mb-2 ${
+                  theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                }`}
+              >
+                Upload Video *
+              </label>
+              <Input
+                type="file"
+                accept="video/*"
+                onChange={(e) => handleInputChange("video", e.target.files[0])}
+                className={`w-full ${
+                  theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                }`}
+              />
+              {errors.video && (
+                <p className="text-red-500 text-sm mt-1">{errors.video}</p>
+              )}
+            </div>
+
+            <div>
+              <label
+                className={`block text-sm font-medium mb-2 ${
+                  theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                }`}
+              >
+                Thumbnail URL
+              </label>
+              <Input
+                type="url"
+                value={formData.thumbnail}
+                onChange={(e) => handleInputChange("thumbnail", e.target.value)}
+                className={`w-full ${
+                  errors.thumbnail ? "border-red-500" : ""
+                } ${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}
+                placeholder="https://example.com/thumbnail.jpg"
+              />
+              {errors.thumbnail && (
+                <p className="text-red-500 text-sm mt-1">{errors.thumbnail}</p>
+              )}
+            </div>
+
+            <div>
+              <label
+                className={`block text-sm font-medium mb-2 ${
+                  theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                }`}
+              >
+                Description
+              </label>
+              <Textarea
+                value={formData.description}
+                onChange={(e) =>
+                  handleInputChange("description", e.target.value)
+                }
+                rows={3}
+                className={`w-full ${
+                  theme === "dark" ? "text-gray-300" : "text-indigo-700"
+                }`}
+                placeholder="Describe your video..."
+              />
+            </div>
+
+            {errors.submit && (
+              <div className="p-4 rounded-xl bg-red-100 border border-red-200 text-red-700">
+                {errors.submit}
+              </div>
+            )}
+
+            <div className="flex gap-4 pt-6 border-t border-white/10">
+              <Button
+                type="submit"
+                disabled={loading}
+                className={`flex-1 py-3 rounded-xl font-bold ${
+                  theme === "dark"
+                    ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
+                    : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+                }`}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-5 h-5 mr-2" />
+                    Add Video
                   </>
                 )}
               </Button>

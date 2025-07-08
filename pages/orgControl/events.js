@@ -38,21 +38,19 @@ export default function EventsPage() {
 
   const categories = [
     "All",
-    "Technology",
-    "Business",
-    "Workshop",
-    "Hackathon",
-    "Conference",
-    "Networking",
-    "Sports",
+    "Tech",
     "Cultural",
+    "Sports",
+    "Workshop",
+    "Webinar",
+    "Other",
   ];
 
   const eventTypes = ["Offline", "Online"];
 
   // API Configuration
   const API_BASE_URL =
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:3006/api/event";
+    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3006";
 
   // Get auth token from localStorage or your auth context
   const getAuthToken = () => {
@@ -109,7 +107,7 @@ export default function EventsPage() {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiClient.get("/get-upcoming-events");
+      const response = await apiClient.get("/api/event/get-upcoming-events");
       if (response.data && response.data.events) {
         const transformedEvents = response.data.events.map((event) => ({
           id: event._id,
@@ -192,7 +190,7 @@ export default function EventsPage() {
           name: "AI & Machine Learning Summit",
           description:
             "Join industry experts for a comprehensive discussion on the latest AI trends.",
-          category: "Technology",
+          category: "Tech",
           eventDate: "2025-07-10",
           eventStart: "10:00",
           eventEnd: "13:00",
@@ -205,7 +203,7 @@ export default function EventsPage() {
             type: "offline",
             locationDetails: "IIT Delhi, New Delhi",
           },
-          type: "Technology",
+          type: "Tech",
           date: "2025-07-10",
           time: "10:00 AM - 01:00 PM",
           location: "IIT Delhi, New Delhi",
@@ -240,7 +238,7 @@ export default function EventsPage() {
     try {
       const response = await axios.delete(
         `${
-          process.env.NEXT_PUBLIC_API_URL || "http://localhost:3006/api"
+          process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3006/api"
         }/event/delete-event`,
         {
           headers: {
@@ -271,7 +269,7 @@ export default function EventsPage() {
   const [editingEventData, setEditingEventData] = useState({
     title: "",
     description: "",
-    category: "Technology",
+    category: "Tech",
     eventDate: "",
     eventStart: "",
     eventEnd: "",
@@ -307,7 +305,7 @@ export default function EventsPage() {
     setEditingEventData({
       title: event.title || event.name || "",
       description: event.description || "",
-      category: event.category || event.eventCategory || "Technology",
+      category: event.category || event.eventCategory || "Tech",
       eventDate: event.eventDate || event.date || "",
       eventStart: event.eventStart || "",
       eventEnd: event.eventEnd || "",
@@ -382,7 +380,7 @@ export default function EventsPage() {
           setEditingEventData({
             title: "",
             description: "",
-            category: "Technology",
+            category: "Tech",
             eventDate: "",
             eventStart: "",
             eventEnd: "",
@@ -809,7 +807,7 @@ export default function EventsPage() {
                     setEditingEventData({
                       title: "",
                       description: "",
-                      category: "Technology",
+                      category: "Tech",
                       eventDate: "",
                       eventStart: "",
                       eventEnd: "",
@@ -1262,7 +1260,7 @@ export default function EventsPage() {
                     setEditingEventData({
                       title: "",
                       description: "",
-                      category: "Technology",
+                      category: "Tech",
                       eventDate: "",
                       eventStart: "",
                       eventEnd: "",
@@ -1502,7 +1500,7 @@ export default function EventsPage() {
                             : "TBD"}
                         </p>
                       </div>
-                      <div>
+                      {/* <div>
                         <span
                           className={`text-sm font-medium ${
                             theme === "dark"
@@ -1521,7 +1519,7 @@ export default function EventsPage() {
                         >
                           {selectedEvent.fee}
                         </p>
-                      </div>
+                      </div> */}
                       <div>
                         <span
                           className={`text-sm font-medium ${

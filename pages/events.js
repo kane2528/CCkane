@@ -36,7 +36,7 @@ export default function EventsPage() {
   ]
 
   // API Configuration
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3006/api/event"
+  const API_BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3006/"
 
   // Get auth token from localStorage or your auth context
   const getAuthToken = () => {
@@ -92,7 +92,7 @@ export default function EventsPage() {
       setLoading(true);
       setError(null);
   
-      const response = await apiClient.get("/get-upcoming-events");
+      const response = await apiClient.get("/api/event/get-upcoming-events");
   
       if (response.data && response.data.events) {
         const transformedEvents = response.data.events.map((event) => ({
@@ -653,7 +653,7 @@ export default function EventsPage() {
                             : "TBD"}
                         </p>
                       </div>
-                      <div>
+                      {/* <div>
                         <span
                           className={`text-sm font-medium ${theme === "dark" ? "text-gray-400" : "text-indigo-600"}`}
                         >
@@ -662,7 +662,7 @@ export default function EventsPage() {
                         <p className={`${theme === "dark" ? "text-gray-300" : "text-indigo-700"}`}>
                           {selectedEvent.fee}
                         </p>
-                      </div>
+                      </div> */}
                       <div>
                         <span
                           className={`text-sm font-medium ${theme === "dark" ? "text-gray-400" : "text-indigo-600"}`}

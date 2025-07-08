@@ -36,7 +36,7 @@ export default function Navbar({ theme = "dark", onThemeToggle }) {
     ...(token
       ? [
           { name: "Discussions", href: "/discussion", icon: null },
-          { name: "Events", href: "/orgControl/events", icon: null },
+          { name: "Organization", href: "/orgControl/organizations", icon: null },
           { name: "Profile", href: "/profile", icon: null },
         ]
       : [{ name: "Login", href: "/login", icon: LogIn }]),
@@ -51,8 +51,8 @@ export default function Navbar({ theme = "dark", onThemeToggle }) {
     try {
       const response = await axios.post(
         `${
-          process.env.NEXT_PUBLIC_API_URL || "http://localhost:3006/api"
-        }/auth/logout`,
+          process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3006/"
+        }/api/auth/logout`,
         {},
         {
           headers: {
