@@ -1244,7 +1244,7 @@ export default function SignupPage() {
                     <div className="pt-6 relative group w-full">
                       <Button
                         type="submit"
-                        disabled={isLoading || Object.keys(errors).length > 0}
+                        // disabled={isLoading || Object.keys(errors).length > 0}
                         className={`w-full h-14 rounded-xl font-bold text-lg transition-all duration-300 transform shadow-xl cursor-pointer
       ${
         theme === "dark"
